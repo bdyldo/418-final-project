@@ -3,104 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>15-418 Final Project Proposal | MPMC Ring Buffer for Trading Pipelines</title>
+  <title>15-418 Final Project | MPMC Ring Buffer in Trading Pipeline</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hero">
     <div class="container">
-      <h1>15-418 Final Project Proposal</h1>
-      <h2>MPMC Ring Buffer in a Trading-System Market Data Pipeline</h2>
+      <h1>15-418 / 15-618 Final Project</h1>
+      <h2>MPMC Ring Buffer in a Market Data Processing Pipeline</h2>
       <p class="subtitle">
-        Evaluating queue designs under realistic producer-consumer workloads with
-        throughput, latency, contention, and scalability analysis.
+        Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
       </p>
     </div>
   </header>
 
   <main class="container">
     <section>
-      <h3>Team</h3>
-      <p>Put your names, Andrew IDs, and course section here.</p>
-    </section>
-
-    <section>
-      <h3>Project Summary</h3>
+      <h3>Project Website</h3>
       <p>
-        We propose to study bounded producer-consumer queue designs in the context
-        of a modern trading-system workload. Our core data structure is a lock-free
-        bounded MPMC ring buffer using per-slot sequence numbers, compared against
-        mutex-based and lock-based baselines.
+        This website contains materials for our 15-418/15-618 final project.
       </p>
+      <ul>
+        <li><a href="proposal.html">Project Proposal</a></li>
+        <li><a href="#">Interim Milestone Report (coming soon)</a></li>
+        <li><a href="#">Final Report (coming soon)</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Project Overview</h3>
       <p>
-        Rather than evaluating the queue in isolation, we embed it into a simulated
-        market data ingestion pipeline:
-      </p>
-      <pre>[Feed Handler Threads] → [Queue] → [Processing Threads]</pre>
-    </section>
-
-    <section>
-      <h3>Motivation</h3>
-      <p>
-        In trading infrastructure, market data feed handlers must process bursts of
-        incoming updates with extremely low latency. Queue behavior under contention
-        directly impacts end-to-end throughput, tail latency, and drop behavior.
-      </p>
-    </section>
-
-    <section>
-      <h3>What We Will Build</h3>
-      <ul>
-        <li>Mutex-based queue baseline</li>
-        <li>SPSC ring buffer baseline</li>
-        <li>MPMC queue with locks</li>
-        <li>Lock-free bounded MPMC ring buffer</li>
-        <li>Trading-style market data pipeline benchmark harness</li>
-      </ul>
-    </section>
-
-    <section>
-      <h3>Application Workload</h3>
-      <p>We will simulate producers generating:</p>
-      <ul>
-        <li>Uniform-rate message streams</li>
-        <li>Poisson arrivals</li>
-        <li>Bursty spike-driven workloads</li>
-      </ul>
-      <p>Consumers will process messages by updating in-memory state or computing lightweight statistics.</p>
-    </section>
-
-    <section>
-      <h3>Technical Challenges</h3>
-      <ul>
-        <li>Memory ordering and publication correctness</li>
-        <li>Atomic fetch_add contention</li>
-        <li>False sharing on shared metadata</li>
-        <li>Queue wraparound and bounded-capacity pressure</li>
-        <li>Tail latency under bursty producer load</li>
-      </ul>
-    </section>
-
-    <section>
-      <h3>Evaluation Plan</h3>
-      <ul>
-        <li>Throughput (ops/sec)</li>
-        <li>Latency (avg, p95, p99)</li>
-        <li>Scalability vs thread count</li>
-        <li>Performance under low/high contention</li>
-        <li>Effect of queue size and task size</li>
-      </ul>
-    </section>
-
-    <section>
-      <h3>Expected Outcome</h3>
-      <p>
-        We expect lock-free designs to outperform lock-based baselines under
-        moderate concurrency, but to show degradation under heavy atomic contention
-        and bursty workloads. The project will characterize when lock-free helps,
-        when it stops helping, and why.
+        We are studying concurrent queue designs in the context of a modern trading-style
+        market data pipeline. Our main systems contribution is a bounded lock-free MPMC
+        ring buffer, which we will compare against lock-based and simpler baselines under
+        realistic producer-consumer workloads.
       </p>
     </section>
   </main>
+
+  <footer>
+    <p>Carnegie Mellon University — Spring 2026</p>
+  </footer>
 </body>
 </html>
