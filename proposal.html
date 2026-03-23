@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Proposal | 15-418 Final Project</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>Project Proposal</h1>
+      <h2>MPMC Ring Buffer in a Market Data Processing Pipeline</h2>
+      <p class="subtitle">
+        Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section>
+      <h3>TITLE</h3>
+      <p><strong>MPMC Ring Buffer in a Market Data Processing Pipeline</strong><br>
+      YOUR NAME, TEAMMATE NAME</p>
+    </section>
+
+    <section>
+      <h3>URL</h3>
+      <p>
+        <a href="https://YOUR-USERNAME.github.io/418-final-project/">
+          https://YOUR-USERNAME.github.io/418-final-project/
+        </a>
+      </p>
+    </section>
+
+    <section>
+      <h3>SUMMARY</h3>
+      <p>
+        We are going to implement and evaluate several concurrent queue designs for a
+        trading-style market data processing pipeline on a multi-core CPU platform. Our
+        main focus is a bounded lock-free MPMC ring buffer, which we will compare against
+        mutex-based, SPSC, and lock-based MPMC baselines using throughput, latency, and
+        scalability measurements under realistic producer-consumer workloads.
+      </p>
+    </section>
+
+    <section>
+      <h3>BACKGROUND</h3>
+      <p>
+        In modern electronic trading systems, a common systems problem is moving large
+        volumes of market data from feed handlers to downstream processing stages with
+        very low latency. Incoming updates may include simulated price ticks or order book
+        deltas, and these messages must be transferred quickly from producer threads to
+        consumer threads that update in-memory state or compute lightweight statistics.
+        Since these systems operate at high message rates and may experience bursts during
+        market open or major news events, the communication structure between stages can
+        become a performance bottleneck.
+      </p>
+
+      <p>
+        Our project studies this problem through the design and evaluation of bounded queue
+        implementations embedded inside a realistic application. Rather than benchmarking a
+        queue in isolation, we will place the queue inside a synthetic market data ingestion
+        pipeline:
+      </p>
+
+      <pre>[Feed Handler Threads]  --->  [Queue]  --->  [Processing Threads]</pre>
+
+      <p>
+        Producers generate synthetic updates according to configurable arrival models such as
+        uniform-rate traffic, Poisson arrivals, and bursty spike-based workloads. Consumers
+        read these updates and perform small units of work, such as updating an in-memory
+        book representation or computing aggregate statistics. This setting exposes queue
+        behavior under different traffic patterns, contention levels, queue capacities, and
+        consumer work sizes.
+      </p>
+
+      <p>
+        Parallelism is naturally present in this workload. Multiple producer threads can
+        concurrently inject messages into the system, and multiple consumer threads can
+        process messages in parallel once they are safely published. Because the queue lies
+        directly on the communication path between these stages, its design strongly affects
+        end-to-end throughput, tail latency, and scalability. This makes the problem a good
+        fit for studying parallel systems behavior on multi-core CPUs.
+      </p>
+    </section>
+
+    <section>
+      <h3>THE CHALLENGE</h3>
+      <p>
+        The main challenge is that MPMC queues are much harder to implement and optimize
+        than simple single-producer/single-consumer queues. A lock-free design must ensure
+        correctness under concurrent access while also keeping synchronization overhead low
+        enough to outperform lock-based alternatives.
+      </p>
+
+      <p>
+        The workload has several characteristics that make this difficult. First, producers and
+        consumers communicate through a shared bounded buffer, so there is substantial
+        synchronization and communication relative to the amount of computation performed per
+        message, especially when consumer work is small. Second, the queue metadata
+        (especially head and tail positions) may become hotspots, creating heavy contention on
+        atomic read-modify-write operations such as fetch_add. Third, correctness depends on
+        carefully ordered publication and reuse of slots, since consumers must not observe a
+        slot before its payload is fully written, and producers must not overwrite unread data.
+      </p>
+
+      <p>
+        The memory access pattern has both favorable and unfavorable aspects. Ring buffers
+        have good spatial locality because storage is preallocated in a contiguous array, but
+        repeated access to shared indices and per-slot sequence numbers can still create cache
+        coherence traffic. False sharing is another concern if frequently updated variables
+        reside on the same cache line. In addition, small queue sizes increase wraparound
+        pressure and intensify reuse of the same slots, which can worsen contention and tail
+        latency under bursty workloads.
+      </p>
+
+      <p>
+        From a systems perspective, one major difficulty is mapping a highly synchronized
+        workload efficiently to a multi-core CPU. We expect challenges involving memory
+        ordering, store visibility, cache invalidation, and the cost of atomic operations. We
+        also want to learn when a lock-free design actually helps, when contention causes it
+        to degrade, and how application-level workload properties influence that crossover.
+      </p>
+    </section>
+
+    <section>
+      <h3>RESOURCES</h3>
+      <p>
+        We plan to implement the project in C++ using the C++ standard library’s atomic and
+        threading support on x86 multi-core CPU machines available to us for development and
+        benchmarking. We are starting from scratch rather than using an existing concurrent
+        queue codebase, since a major goal of the project is to understand and implement the
+        synchronization logic ourselves.
+      </p>
+
+      <p>
+        Our baseline implementations will include:
+      </p>
+      <ul>
+        <li>a mutex-protected queue using <code>std::queue</code> and <code>std::mutex</code>,</li>
+        <li>a simple SPSC ring buffer,</li>
+        <li>a lock-based MPMC queue, and</li>
+        <li>a bounded lock-free MPMC ring buffer using per-slot sequence numbers.</li>
+      </ul>
+
+      <p>
+        We will use course material on synchronization, memory ordering, and performance
+        analysis as a reference, along with standard documentation for C++ atomics and any
+        relevant papers or writeups on bounded MPMC ring buffers that we consult during
+        implementation. At the moment, we do not anticipate needing special hardware beyond
+        access to a reasonably modern multi-core machine for controlled experiments.
+      </p>
+    </section>
+
+    <section>
+      <h3>GOALS AND DELIVERABLES</h3>
+
+      <h4>Plan to Achieve</h4>
+      <ul>
+        <li>
+          Implement four queue designs: mutex-based queue, SPSC ring buffer, lock-based
+          MPMC queue, and bounded lock-free MPMC ring buffer.
+        </li>
+        <li>
+          Build a market data pipeline benchmark harness with configurable producers,
+          consumers, queue sizes, message sizes, and arrival patterns.
+        </li>
+        <li>
+          Evaluate performance under different thread configurations, including 1P-1C,
+          few-producer/many-consumer, many-producer/few-consumer, and many-to-many
+          stress cases.
+        </li>
+        <li>
+          Measure throughput, average latency, and tail latency (at least p95 and p99).
+        </li>
+        <li>
+          Study how contention level, queue size, and per-message work affect relative
+          performance of the implementations.
+        </li>
+      </ul>
+
+      <p>
+        A successful project for us means producing a working lock-free MPMC queue, embedding
+        it in the application pipeline, and carrying out a thoughtful experimental evaluation
+        that explains the performance tradeoffs rather than only presenting raw timing numbers.
+      </p>
+
+      <h4>Hope to Achieve</h4>
+      <ul>
+        <li>
+          Measure additional hardware-level effects such as cache miss behavior, false sharing,
+          or time spent spinning under contention.
+        </li>
+        <li>
+          Extend the benchmark into a multi-stage pipeline, such as Stage 1 → queue →
+          Stage 2 → queue → Stage 3, to study backpressure propagation.
+        </li>
+        <li>
+          Explore optimizations to reduce atomic contention or improve cache behavior, then
+          quantify their effect.
+        </li>
+      </ul>
+
+      <h4>Fallback if Progress Is Slower</h4>
+      <ul>
+        <li>
+          If the fully lock-free MPMC implementation takes longer than expected, we will still
+          complete the application harness and evaluate the mutex, SPSC, and lock-based MPMC
+          baselines thoroughly.
+        </li>
+        <li>
+          If advanced hardware-counter analysis is too time-consuming, we will prioritize a
+          strong experimental study using throughput, latency, scalability, and contention
+          trends.
+        </li>
+      </ul>
+
+      <h4>Questions We Hope to Answer</h4>
+      <ul>
+        <li>When does lock-free outperform mutex-based synchronization?</li>
+        <li>When does MPMC performance stop scaling as threads increase?</li>
+        <li>How much do bursty arrivals hurt tail latency and drop rate?</li>
+        <li>How much does queue size affect contention and wraparound pressure?</li>
+        <li>When does queue overhead dominate total runtime versus when consumer work dominates?</li>
+      </ul>
+
+      <h4>Demo</h4>
+      <p>
+        If time permits, we may show a live benchmark demo that visualizes message rate,
+        queue occupancy, throughput, and latency under different workload modes. However, our
+        primary focus is on a strong experimental evaluation rather than a live demo.
+      </p>
+    </section>
+
+    <section>
+      <h3>PLATFORM CHOICE</h3>
+      <p>
+        A multi-core CPU platform is a natural fit for this workload because the application
+        consists of multiple communicating threads that execute concurrently and share memory.
+        The primary issues we want to study—atomic synchronization, cache coherence,
+        false sharing, memory ordering, and contention—are all central CPU-side parallel
+        systems issues. Using C++ also makes sense because it gives us direct access to low-level
+        concurrency primitives and memory-ordering control while still allowing us to build a
+        reasonably clean benchmarking framework.
+      </p>
+
+      <p>
+        This platform is especially appropriate because our project is not simply about raw
+        computation throughput; it is about the interaction between application behavior and
+        synchronization mechanisms. A multi-core shared-memory machine exposes exactly the
+        kinds of bottlenecks that bounded concurrent queues encounter in practice.
+      </p>
+    </section>
+
+    <section>
+      <h3>SCHEDULE</h3>
+      <ul>
+        <li>
+          <strong>Week of March 23:</strong> finalize proposal, set up repository and website,
+          implement mutex-based queue and SPSC ring buffer, define benchmark interface.
+        </li>
+        <li>
+          <strong>Week of March 30:</strong> implement lock-based MPMC queue and first version
+          of the market data producer-consumer harness.
+        </li>
+        <li>
+          <strong>Week of April 6:</strong> implement bounded lock-free MPMC ring buffer and
+          verify correctness with targeted tests under contention.
+        </li>
+        <li>
+          <strong>Week of April 13:</strong> run baseline experiments across thread counts,
+          queue sizes, and workload types; prepare for intermediate milestone.
+        </li>
+        <li>
+          <strong>Week of April 20:</strong> improve benchmarking methodology, collect latency
+          and throughput data, and begin deeper analysis of contention effects.
+        </li>
+        <li>
+          <strong>Week of April 27:</strong> add stretch-goal measurements such as cache or
+          spinning behavior if time allows; generate plots and summarize conclusions.
+        </li>
+        <li>
+          <strong>Week of May 4:</strong> finalize writeup, website updates, figures, and any
+          demo materials.
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Back to Project Home</h3>
+      <p><a href="index.html">Return to homepage</a></p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Carnegie Mellon University — 15-418 / 15-618 — Spring 2026</p>
+  </footer>
+</body>
+</html>
