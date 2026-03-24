@@ -39,9 +39,9 @@
       <p>
         We are going to implement and evaluate several concurrent queue designs for a
         trading-style market data processing pipeline on a multi-core CPU platform. Our
-        main focus is a bounded lock-free MPMC ring buffer, which we will compare against
+        main focus is a bounded lock-free Multiple Processor Multiple Consumer (MPMC) ring buffer, which we will compare against
         mutex-based, SPSC, and lock-based MPMC baselines using throughput, latency, and
-        scalability measurements under realistic producer-consumer workloads.
+        scalability measurements under multiple types of realistic producer-consumer workloads.
       </p>
     </section>
 
@@ -128,8 +128,8 @@
     <section>
       <h3>RESOURCES</h3>
       <p>
-        We plan to implement the project in C++ using the C++ standard library’s atomic and
-        threading support on x86 multi-core CPU machines available to us for development and
+        We plan to implement the project in C++ using the C++ standard library's atomic and
+        threading support on GHC and PSC machines available to us for development and
         benchmarking. We are starting from scratch rather than using an existing concurrent
         queue codebase, since a major goal of the project is to understand and implement the
         synchronization logic ourselves.
@@ -237,7 +237,7 @@
     <section>
       <h3>PLATFORM CHOICE</h3>
       <p>
-        A multi-core CPU platform is a natural fit for this workload because the application
+        A multi-core CPU platform like GHC and PSC machines are natural fit for this workload because the application
         consists of multiple communicating threads that execute concurrently and share memory.
         The primary issues we want to study—atomic synchronization, cache coherence,
         false sharing, memory ordering, and contention—are all central CPU-side parallel
@@ -275,15 +275,14 @@
         </li>
         <li>
           <strong>Week of April 20:</strong> improve benchmarking methodology, collect latency
-          and throughput data, and begin deeper analysis of contention effects.
+          and throughput data, and begin deeper analysis of contention effects. Add stretch-goal measurements such as cache or
+          spinning behavior if time allows
         </li>
         <li>
-          <strong>Week of April 27:</strong> add stretch-goal measurements such as cache or
-          spinning behavior if time allows; generate plots and summarize conclusions.
+          <strong>Week of April 27:</strong> extend the benchmark to a multi-stage pipeline and run benchmarking among the four data structures on this pipeline. Finalizing plots and summarize conclusions. Finalize writeup, website updates, figures, poster, and any demo materials.
         </li>
         <li>
-          <strong>Week of May 4:</strong> finalize writeup, website updates, figures, and any
-          demo materials.
+          <strong>May 1st:</strong> present the poster with potential demo
         </li>
       </ul>
     </section>
