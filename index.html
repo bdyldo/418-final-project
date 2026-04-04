@@ -10,7 +10,7 @@
   <header class="hero">
     <div class="container">
       <h1>15-418 / 15-618 Final Project</h1>
-      <h2>MPMC Ring Buffer in a Market Data Processing Pipeline</h2>
+      <h2>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</h2>
       <p class="subtitle">
         Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
       </p>
@@ -24,7 +24,7 @@
         This website contains materials for our 15-418/15-618 final project.
       </p>
       <ul>
-        <li><a href="revised_project_proposal.html">Project Proposal</a></li>
+        <li><a href="multi_agent_path_planning_proposal.html">Project Proposal</a></li>
         <li><a href="#">Interim Milestone Report (coming soon)</a></li>
         <li><a href="#">Final Report (coming soon)</a></li>
       </ul>
@@ -33,10 +33,12 @@
     <section>
       <h3>Project Overview</h3>
       <p>
-        We are studying concurrent queue designs in the context of a modern trading-style
-        market data pipeline. Our main systems contribution is a bounded lock-free MPMC
-        ring buffer, which we will compare against lock-based and simpler baselines under
-        realistic producer-consumer workloads.
+        We are going to study parallelization strategies for multi-agent path planning in a 
+        simplified robotic manipulation setting, where multiple fingers of a robotic hand must 
+        move from start nodes to designated goal nodes without colliding. Our baseline will use 
+        Conflict-Based Search (CBS) with A* for single-agent replanning, and we will compare several 
+        parallel variants to understand how much of the algorithm can be accelerated and what bottlenecks 
+        limit scaling.
       </p>
     </section>
   </main>
