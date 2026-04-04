@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Proposal | 15-418 Final Project</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      color: #222;
+      background: #fafafa;
+    }
+    .hero {
+      background: #1f2937;
+      color: white;
+      padding: 2.5rem 0;
+      margin-bottom: 2rem;
+    }
+    .container {
+      width: min(900px, 92%);
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4 {
+      margin-top: 0;
+    }
+    section {
+      background: white;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+    }
+    ul {
+      padding-left: 1.4rem;
+    }
+    a {
+      color: #2563eb;
+    }
+    .subtitle {
+      opacity: 0.92;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>Project Proposal</h1>
+      <h2>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</h2>
+      <p class="subtitle">
+        Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section>
+      <h3>TITLE</h3>
+      <p><strong>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</strong><br>
+      Dylan Sun (bdsun), Jongsun Park (jongsunp)</p>
+    </section>
+
+    <section>
+      <h3>URL</h3>
+      <p>
+        <a href="https://bdyldo.github.io/418-final-project/">
+          https://bdyldo.github.io/418-final-project/
+        </a>
+      </p>
+    </section>
+
+    <section>
+      <h3>SUMMARY</h3>
+      <p>
+        We are going to study parallelization strategies for multi-agent path planning in a simplified robotic manipulation setting, where multiple fingers of a robotic hand must move from start nodes to designated goal nodes without colliding. Our baseline will use Conflict-Based Search (CBS) with A* for single-agent replanning, and we will compare several parallel variants to understand how much of the algorithm can be accelerated and what bottlenecks limit scaling.
+      </p>
+    </section>
+
+    <section>
+      <h3>BACKGROUND</h3>
+      <p>
+        A common robotics problem is coordinating multiple moving components that share the same workspace. In our motivating example, a robotic hand with multiple fingers must move toward a grasp configuration without finger-finger collisions. To simplify the motion-planning problem into something implementable within the scope of this class, we model the workspace as a graph or grid roadmap. Each finger is treated as an agent with a start node and a target node, and the goal is to compute collision-free paths for all fingers over time.
+      </p>
+
+      <p>
+        This problem is a form of multi-agent path finding (MAPF). A standard optimal approach is Conflict-Based Search (CBS). CBS separates the problem into two levels. At the low level, it uses single-agent A* search to compute a shortest path for one agent subject to a set of constraints. At the high level, it checks the resulting multi-agent solution for collisions. If a conflict is detected, CBS branches by adding constraints and replanning until it finds a conflict-free set of paths.
+      </p>
+
+      <pre>[Finger 1 Start/Goal]   [Finger 2 Start/Goal]   ...   [Finger N Start/Goal]
+                \             |                       /
+                 \            |                      /
+                  ------  High-Level CBS Search  ------
+                               |
+                     Low-Level A* Replanning
+                               |
+                   Collision-Free Multi-Agent Paths</pre>
+
+      <p>
+        This problem is appealing for a parallel systems project because it contains meaningful algorithmic structure and nontrivial sources of parallelism. At the same time, the search process has strong ordering pressure: optimal planning prefers expanding the most promising state first, which introduces dependencies and synchronization challenges. This makes the problem a good fit for studying when parallelism helps, when it creates overhead, and what tradeoffs arise between strict search ordering and scalable execution.
+      </p>
+    </section>
+
+    <section>
+      <h3>THE CHALLENGE</h3>
+      <p>
+        The difficulty of this project is not simply implementing A* or CBS, but exposing useful parallelism in a search problem that is only partially parallelizable. In sequential CBS, the high-level search repeatedly selects the most promising conflict tree node, resolves one collision, and generates child nodes that require additional low-level replanning. This creates a nontrivial dependency structure because the search order affects both runtime and solution quality.
+      </p>
+
+      <p>
+        Several properties of the workload make the problem challenging. First, conflict rates depend heavily on the geometry of the environment and the amount of interference between agents. When conflicts are rare, planning is easier and some parallelization strategies may offer little benefit. When conflicts are frequent, the high-level tree can grow rapidly and replanning costs become dominant. Second, the search may become imbalanced: some CBS branches are cheap to evaluate while others require many low-level searches. Third, the algorithm relies on priority queues, constraint sets, and repeated state expansion, all of which can become synchronization bottlenecks under parallel execution.
+      </p>
+
+      <p>
+        From a systems perspective, we want to understand how to parallelize a search algorithm with both independent and dependent work. Some parts of the computation, such as initial per-agent pathfinding and certain child-node replans, can be done concurrently. Other parts, such as selecting globally promising CBS nodes, may resist parallelization or require relaxed ordering. This creates a real tradeoff between preserving optimal search behavior and obtaining useful speedup.
+      </p>
+    </section>
+
+    <section>
+      <h3>RESOURCES</h3>
+      <p>
+        We plan to implement the project in C++ using the C++ standard library's threading and synchronization support on GHC and PSC multi-core machines. We are starting from scratch rather than building on an existing MAPF solver, since part of the project goal is to understand the algorithmic structure and implement the parallelization strategies ourselves.
+      </p>
+
+      <p>
+        Our starting point will be:
+      </p>
+      <ul>
+        <li>a sequential single-agent A* implementation,</li>
+        <li>a sequential CBS baseline for optimal multi-agent planning, and</li>
+        <li>a configurable graph/grid generator for synthetic problem instances.</li>
+      </ul>
+
+      <p>
+        We will use course material on parallel search, synchronization, and performance analysis as guidance, along with documentation and any relevant papers or writeups on CBS, MAPF, and parallel heuristic search that we consult during implementation. At present, we do not anticipate needing specialized hardware beyond access to multi-core CPUs for controlled experiments.
+      </p>
+    </section>
+
+    <section>
+      <h3>GOALS AND DELIVERABLES</h3>
+
+      <h4>Plan to Achieve</h4>
+      <ul>
+        <li>
+          Implement a sequential baseline consisting of single-agent A* and optimal CBS for multi-agent path planning.
+        </li>
+        <li>
+          Implement a simplified robotic-finger planning environment on a graph or grid, where each finger is an agent with a start and goal and agents must avoid vertex and edge collisions.
+        </li>
+        <li>
+          Implement multiple parallelization strategies for the same planning problem, such as:
+          <ul>
+            <li>parallel root-level per-agent A* planning,</li>
+            <li>parallel low-level replanning for CBS child nodes,</li>
+            <li>parallel conflict detection or validation, and</li>
+            <li>a more aggressive parallel strategy such as concurrent expansion of high-level CBS nodes or a relaxed-order multi-queue variant.</li>
+          </ul>
+        </li>
+        <li>
+          Build a benchmark harness that varies the number of agents, graph size, obstacle density, and conflict intensity to create easy and hard planning instances.
+        </li>
+        <li>
+          Measure runtime, speedup, scaling efficiency, number of CBS nodes expanded, and amount of replanning work across implementations.
+        </li>
+        <li>
+          Evaluate how much parallelism is actually available in this problem, and identify the bottlenecks that prevent ideal scaling.
+        </li>
+      </ul>
+
+      <p>
+        A successful project for us means producing a correct multi-agent planner, implementing at least two meaningful parallel variants beyond the sequential baseline, and carrying out a thoughtful evaluation that explains when parallelism helps and when global search dependencies dominate.
+      </p>
+
+      <h4>Hope to Achieve</h4>
+      <ul>
+        <li>
+          Explore a bounded-suboptimal or relaxed-order planning variant to see whether giving up some strict best-first behavior can improve scalability.
+        </li>
+        <li>
+          Compare performance on multiple environment types, such as open grids, narrow passages, and obstacle-dense maps, to understand how structure changes conflict behavior.
+        </li>
+        <li>
+          Add visualization of agent paths and conflict resolution over time for the poster or demo.
+        </li>
+      </ul>
+
+      <h4>Fallback if Progress Is Slower</h4>
+      <ul>
+        <li>
+          If a fully parallel high-level CBS strategy proves too complex, we will still complete the sequential baseline and focus on root-level and low-level replanning parallelism, which already provides meaningful algorithmic comparison.
+        </li>
+        <li>
+          If relaxed-order search is too time-consuming, we will prioritize a strong experimental study of the baseline and simpler parallel variants.
+        </li>
+      </ul>
+
+      <h4>Questions We Hope to Answer</h4>
+      <ul>
+        <li>How much of CBS can actually be parallelized in practice?</li>
+        <li>Which parts of the planner dominate runtime as the number of agents increases?</li>
+        <li>When do parallel low-level searches provide real speedup, and when are they overshadowed by high-level coordination costs?</li>
+        <li>How do conflict rate and environment structure affect scalability?</li>
+        <li>What tradeoff exists between preserving strict search order and exposing more concurrency?</li>
+      </ul>
+
+      <h4>Demo</h4>
+      <p>
+        If time permits, we may show a live visualization of agents moving through the workspace, with conflicts highlighted and paths updated as the planner runs. However, our primary focus is on a strong experimental evaluation rather than a live demo.
+      </p>
+    </section>
+
+    <section>
+      <h3>PLATFORM CHOICE</h3>
+      <p>
+        A multi-core CPU platform such as the GHC and PSC machines is a natural fit for this workload because the planner consists of many interacting search tasks and repeated graph operations that share memory but do not map cleanly to SIMD or GPU execution. The main issues we want to study—parallel search, synchronization, task granularity, load imbalance, and contention on shared search structures—are all central CPU-side parallel systems problems.
+      </p>
+
+      <p>
+        C++ is also a good match because it gives us control over threads, work scheduling, and memory layout while allowing us to build a clean implementation of both sequential and parallel search strategies. Our project is not just about raw throughput; it is about understanding how search structure, coordination overhead, and algorithmic dependencies shape scaling on shared-memory machines.
+      </p>
+    </section>
+
+    <section>
+      <h3>SCHEDULE</h3>
+      <ul>
+        <li>
+          <strong>Week of March 23:</strong> finalize proposal, set up repository and website, implement graph/grid instance generator, and build sequential single-agent A* baseline.
+        </li>
+        <li>
+          <strong>Week of March 30:</strong> implement sequential CBS baseline, support collision checking and constraints, and verify correctness on small multi-agent test cases.
+        </li>
+        <li>
+          <strong>Week of April 6:</strong> implement first parallel strategy (parallel root-level per-agent planning and/or parallel low-level replanning), and validate correctness against the sequential solver.
+        </li>
+        <li>
+          <strong>Week of April 13:</strong> implement second parallel strategy, such as parallel conflict detection or concurrent child-node processing, and prepare the milestone with initial experimental results.
+        </li>
+        <li>
+          <strong>Week of April 20:</strong> run systematic experiments across agent counts, graph sizes, obstacle densities, and conflict-heavy scenarios; collect runtime, scaling, and search-effort metrics.
+        </li>
+        <li>
+          <strong>Week of April 27:</strong> analyze bottlenecks, finalize plots and conclusions, add stretch-goal experiments if time allows, and complete the writeup, website updates, figures, poster, and any demo materials.
+        </li>
+        <li>
+          <strong>May 1st:</strong> present the poster with potential demo.
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Back to Project Home</h3>
+      <p><a href="index.html">Return to homepage</a></p>
+    </section>
+
+  </main>
+</body>
+</html>
