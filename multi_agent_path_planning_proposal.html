@@ -88,6 +88,9 @@
       <p>
         We are going to study parallelization strategies for multi-agent path planning in a simplified robotic manipulation setting, where multiple fingers of a robotic hand must move from start nodes to designated goal nodes without colliding. Our baseline will use Conflict-Based Search (CBS) with A* for single-agent replanning, and we will compare several parallel variants to understand how much of the algorithm can be accelerated and what bottlenecks limit scaling.
       </p>
+      <p>
+        A central theme of the project is the tension between correctness and scalability. MAPF algorithms must return paths that are collision-free, and an optimal CBS implementation also has to preserve a best-first search order over high-level conflict-tree nodes. These requirements make the problem more complex than simply running many A* searches in parallel, because some parallel choices can improve throughput while also changing the order in which conflicts are resolved or increasing the amount of redundant search.
+      </p>
     </section>
 
     <section>
@@ -112,6 +115,10 @@
       <p>
         This problem is appealing for a parallel systems project because it contains meaningful algorithmic structure and nontrivial sources of parallelism. At the same time, the search process has strong ordering pressure: optimal planning prefers expanding the most promising state first, which introduces dependencies and synchronization challenges. This makes the problem a good fit for studying when parallelism helps, when it creates overhead, and what tradeoffs arise between strict search ordering and scalable execution.
       </p>
+
+      <p>
+        The coupling between agents is what makes the problem difficult. A single-agent shortest path may be easy to compute, but once multiple agents share the same graph, one agent's path can invalidate another agent's path at a particular timestep. CBS handles this by adding constraints and replanning, but these constraints are generated dynamically from conflicts discovered during the search. As a result, the future work available to parallel threads depends on earlier conflicts, the order in which high-level nodes are expanded, and the structure of the current set of constraints.
+      </p>
     </section>
 
     <section>
@@ -126,6 +133,14 @@
 
       <p>
         From a systems perspective, we want to understand how to parallelize a search algorithm with both independent and dependent work. Some parts of the computation, such as initial per-agent pathfinding and certain child-node replans, can be done concurrently. Other parts, such as selecting globally promising CBS nodes, may resist parallelization or require relaxed ordering. This creates a real tradeoff between preserving optimal search behavior and obtaining useful speedup.
+      </p>
+
+      <p>
+        Correctness is also more subtle than avoiding data races. For this project, a correct planner must at minimum produce paths that obey all vertex and edge-collision constraints over time. If we are evaluating an optimal CBS baseline, correctness also includes expanding nodes in an order that preserves optimality. Parallel execution can threaten these properties in several ways: threads may evaluate stale constraint sets, duplicate work on the same conflict-tree region, publish child nodes in a different order, or require synchronization around shared priority queues that removes much of the expected speedup.
+      </p>
+
+      <p>
+        This gives us an explicit correctness-versus-scalability question. A conservative parallel version can keep the exact same logical search order as the sequential baseline, which makes correctness and comparison easier but may scale poorly because workers often wait on a global queue or on high-level decisions. A more aggressive version can expose more parallel work by expanding multiple CBS nodes at once or by relaxing priority-queue ordering, but then we must carefully measure whether it still returns valid paths, whether it remains optimal or becomes bounded-suboptimal, and whether the extra search work is worth the parallel speedup.
       </p>
     </section>
 
@@ -176,12 +191,20 @@
           Measure runtime, speedup, scaling efficiency, number of CBS nodes expanded, and amount of replanning work across implementations.
         </li>
         <li>
+          Compare correctness and solution quality across implementations, including whether each variant preserves collision-free paths, optimal CBS behavior, or a clearly documented relaxed-order behavior.
+        </li>
+        <li>
           Evaluate how much parallelism is actually available in this problem, and identify the bottlenecks that prevent ideal scaling.
         </li>
       </ul>
 
       <p>
         A successful project for us means producing a correct multi-agent planner, implementing at least two meaningful parallel variants beyond the sequential baseline, and carrying out a thoughtful evaluation that explains when parallelism helps and when global search dependencies dominate.
+      </p>
+
+      <h4>Correctness vs. Scalability</h4>
+      <p>
+        We will treat correctness as a first-class part of the evaluation rather than only reporting speedup. The sequential CBS baseline will serve as the reference implementation for valid and, when applicable, optimal paths. Parallel variants that preserve strict CBS ordering should match the baseline solution quality, while relaxed-order variants will be evaluated separately as scalability experiments that may trade optimality for more available parallelism. In all cases, we will validate that produced paths are collision-free and report any extra search work, duplicated expansions, or solution-quality changes caused by parallel execution.
       </p>
 
       <h4>Hope to Achieve</h4>
@@ -214,6 +237,7 @@
         <li>When do parallel low-level searches provide real speedup, and when are they overshadowed by high-level coordination costs?</li>
         <li>How do conflict rate and environment structure affect scalability?</li>
         <li>What tradeoff exists between preserving strict search order and exposing more concurrency?</li>
+        <li>How much performance can we gain before synchronization overhead, duplicate work, or loss of strict optimality becomes the limiting factor?</li>
       </ul>
 
       <h4>Demo</h4>
