@@ -1,4 +1,5 @@
 #include "grid_planner.h"
+#include "grid_renderer.h"
 
 #include <cstdlib>
 #include <exception>
@@ -58,13 +59,15 @@ int main(int argc, char** argv) {
 
     GridPlanner planner(rows, cols);
     planner.createRowRobots();
-    planner.printRobotSummary(std::cout);
-    planner.writeSvg(output_path);
+
+    GridRenderer renderer(planner);
+    renderer.printRobotSummary(std::cout);
+    renderer.writeSvg(output_path);
     std::cout << "\nWrote SVG visualization to " << output_path << "\n";
 
     if (print_terminal_grid) {
-      planner.printPathOverlay(std::cout);
-      planner.printTimeSteps(std::cout);
+      renderer.printPathOverlay(std::cout);
+      renderer.printTimeSteps(std::cout);
     }
   } catch (const std::exception& error) {
     std::cerr << "error: " << error.what() << "\n";
