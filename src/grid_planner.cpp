@@ -2,24 +2,29 @@
 
 #include <stdexcept>
 
+// Constructs a planner for a grid with the given number of rows and columns.
 GridPlanner::GridPlanner(int rows, int cols) : rows_(rows), cols_(cols) {
   if (rows_ <= 0 || cols_ <= 0) {
     throw std::invalid_argument("grid dimensions must be positive");
   }
 }
 
+// Returns the number of rows in the grid.
 int GridPlanner::rows() const {
   return rows_;
 }
 
+// Returns the number of columns in the grid.
 int GridPlanner::cols() const {
   return cols_;
 }
 
+// Returns the generated robots and their paths.
 const std::vector<Robot>& GridPlanner::robots() const {
   return robots_;
 }
 
+// Creates one robot per row, moving from the left edge to the right edge.
 void GridPlanner::createRowRobots() {
   robots_.clear();
   robots_.reserve(rows_);
@@ -34,6 +39,7 @@ void GridPlanner::createRowRobots() {
   }
 }
 
+// Builds the current placeholder path: a straight horizontal path to the right.
 std::vector<Point> GridPlanner::makeStraightRightPath(int row) const {
   std::vector<Point> path;
   path.reserve(cols_);

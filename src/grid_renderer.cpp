@@ -15,22 +15,27 @@ const std::array<const char*, 12> kRobotColors = {
     "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#0891b2", "#9333ea",
     "#be123c", "#4d7c0f", "#0f766e", "#b45309", "#1d4ed8", "#c026d3"};
 
+// Picks a repeatable display color for a robot id.
 const char* robotColor(int id) {
   return kRobotColors[(id - 1) % kRobotColors.size()];
 }
 
+// Converts a grid column into the x-coordinate of that cell's center.
 int cellCenterX(int col) {
   return kMargin + col * kCellSize + kCellSize / 2;
 }
 
+// Converts a grid row into the y-coordinate of that cell's center.
 int cellCenterY(int row) {
   return kMargin + row * kCellSize + kCellSize / 2;
 }
 
 }  // namespace
 
+// Stores a reference to the planner data that will be rendered.
 GridRenderer::GridRenderer(const GridPlanner& planner) : planner_(planner) {}
 
+// Prints the grid dimensions and start/goal for each robot.
 void GridRenderer::printRobotSummary(std::ostream& out) const {
   out << "Grid: " << planner_.rows() << " x " << planner_.cols() << "\n";
   out << "Robots: " << planner_.robots().size() << " (one robot per row)\n\n";
@@ -42,6 +47,7 @@ void GridRenderer::printRobotSummary(std::ostream& out) const {
   }
 }
 
+// Prints a terminal view of every cell touched by each robot path.
 void GridRenderer::printPathOverlay(std::ostream& out) const {
   out << "\nFull path overlay:\n";
 
@@ -62,6 +68,7 @@ void GridRenderer::printPathOverlay(std::ostream& out) const {
   }
 }
 
+// Prints the robot positions at each timestep.
 void GridRenderer::printTimeSteps(std::ostream& out) const {
   out << "\nRobot positions over time:\n";
 
@@ -71,6 +78,7 @@ void GridRenderer::printTimeSteps(std::ostream& out) const {
   }
 }
 
+// Writes an SVG visualization of the grid, robot starts, goals, and paths.
 void GridRenderer::writeSvg(const std::string& path) const {
   std::ofstream svg(path);
   if (!svg) {
@@ -121,10 +129,12 @@ void GridRenderer::writeSvg(const std::string& path) const {
   svg << "</svg>\n";
 }
 
+// Formats a robot id for terminal grid output.
 std::string GridRenderer::robotLabel(int id) const {
   return "R" + std::to_string(id);
 }
 
+// Prints the grid state for one timestep.
 void GridRenderer::printGridAtTime(std::ostream& out, int time_step) const {
   std::vector<std::vector<std::string>> grid(
       planner_.rows(), std::vector<std::string>(planner_.cols(), "."));
