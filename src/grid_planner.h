@@ -8,6 +8,10 @@ struct Point {
   int col;
 };
 
+inline bool operator==(const Point& lhs, const Point& rhs) {
+  return lhs.row == rhs.row && lhs.col == rhs.col;
+}
+
 struct Robot {
   int id;
   Point start;

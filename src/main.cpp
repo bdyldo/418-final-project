@@ -1,3 +1,4 @@
+#include "collision_detector.h"
 #include "grid_planner.h"
 #include "grid_renderer.h"
 
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -62,6 +64,12 @@ int main(int argc, char** argv) {
 
     GridRenderer renderer(planner);
     renderer.printRobotSummary(std::cout);
+
+    CollisionDetector collision_detector;
+    const std::vector<Collision> collisions =
+        collision_detector.detectCollisions(planner.robots());
+    collision_detector.printCollisions(collisions, std::cout);
+
     renderer.writeSvg(output_path);
     std::cout << "\nWrote SVG visualization to " << output_path << "\n";
 
