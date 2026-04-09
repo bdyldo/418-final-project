@@ -27,6 +27,7 @@ class GridPlanner {
   int cols() const;
   const std::vector<Robot>& robots() const;
 
+  std::vector<Robot> createRowRobotSpecs() const;
   void createRowRobots();
 
  private:

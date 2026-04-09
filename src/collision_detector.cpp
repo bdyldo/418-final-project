@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -52,6 +53,76 @@ std::string pointString(const Point& point) {
 }
 
 }  // namespace
+
+// Returns the earliest collision in time order, which is the only collision CBS needs to branch on.
+std::optional<Collision> CollisionDetector::findFirstCollision(
+    const std::vector<Robot>& robots) const {
+  const int time_steps = maxPathLength(robots);
+
+  for (int time_step = 0; time_step < time_steps; ++time_step) {
+    std::unordered_map<Point, std::vector<int>, PointHash> occupied_cells;
+    occupied_cells.reserve(robots.size());
+
+    for (const Robot& robot : robots) {
+      occupied_cells[positionAtTime(robot, time_step)].push_back(robot.id);
+    }
+
+    for (const auto& entry : occupied_cells) {
+      if (entry.second.size() < 2) {
+        continue;
+      }
+
+      return Collision{
+          CollisionType::Vertex,
+          time_step,
+          entry.second[0],
+          entry.second[1],
+          entry.first,
+          entry.first,
+          entry.first,
+          entry.first,
+          entry.first,
+      };
+    }
+
+    if (time_step + 1 >= time_steps) {
+      continue;
+    }
+
+    std::unordered_map<EdgeKey, std::vector<RobotMove>, EdgeKeyHash> moves_by_edge;
+    moves_by_edge.reserve(robots.size());
+
+    for (const Robot& robot : robots) {
+      const Point from = positionAtTime(robot, time_step);
+      const Point to = positionAtTime(robot, time_step + 1);
+
+      if (from == to) {
+        continue;
+      }
+
+      const EdgeKey reverse_edge = {to, from};
+      const auto reverse_it = moves_by_edge.find(reverse_edge);
+      if (reverse_it != moves_by_edge.end()) {
+        const RobotMove& other_move = reverse_it->second.front();
+        return Collision{
+            CollisionType::Edge,
+            time_step,
+            other_move.robot_id,
+            robot.id,
+            to,
+            other_move.from,
+            other_move.to,
+            from,
+            to,
+        };
+      }
+
+      moves_by_edge[{from, to}].push_back({robot.id, from, to});
+    }
+  }
+
+  return std::nullopt;
+}
 
 // Scans all timesteps for vertex collisions and edge-swap collisions.
 std::vector<Collision> CollisionDetector::detectCollisions(
