@@ -8,6 +8,7 @@
 
 class GridRenderer {
  public:
+  GridRenderer(int rows, int cols, const std::vector<Robot>& robots);
   explicit GridRenderer(const GridPlanner& planner);
 
   void printRobotSummary(std::ostream& out) const;
@@ -16,7 +17,9 @@ class GridRenderer {
   void writeSvg(const std::string& path) const;
 
  private:
-  const GridPlanner& planner_;
+  int rows_;
+  int cols_;
+  const std::vector<Robot>& robots_;
 
   std::string robotLabel(int id) const;
   void printGridAtTime(std::ostream& out, int time_step) const;

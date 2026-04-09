@@ -24,18 +24,24 @@ const std::vector<Robot>& GridPlanner::robots() const {
   return robots_;
 }
 
-// Creates one robot per row, moving from the left edge to the right edge.
-void GridPlanner::createRowRobots() {
-  robots_.clear();
-  robots_.reserve(rows_);
+// Creates one robot specification per row with starts and goals but no path yet.
+std::vector<Robot> GridPlanner::createRowRobotSpecs() const {
+  std::vector<Robot> robots;
+  robots.reserve(rows_);
 
   for (int row = 0; row < rows_; ++row) {
-    Robot robot;
-    robot.id = row + 1;
-    robot.start = {row, 0};
-    robot.goal = {row, cols_ - 1};
-    robot.path = makeStraightRightPath(row);
-    robots_.push_back(robot);
+    robots.push_back({row + 1, {row, 0}, {row, cols_ - 1}, {}});
+  }
+
+  return robots;
+}
+
+// Creates one robot per row, moving from the left edge to the right edge.
+void GridPlanner::createRowRobots() {
+  robots_ = createRowRobotSpecs();
+
+  for (Robot& robot : robots_) {
+    robot.path = makeStraightRightPath(robot.start.row);
   }
 }
 

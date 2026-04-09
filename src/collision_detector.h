@@ -3,6 +3,7 @@
 
 #include "grid_planner.h"
 
+#include <optional>
 #include <ostream>
 #include <vector>
 
@@ -25,6 +26,8 @@ struct Collision {
 
 class CollisionDetector {
  public:
+  std::optional<Collision> findFirstCollision(
+      const std::vector<Robot>& robots) const;
   std::vector<Collision> detectCollisions(
       const std::vector<Robot>& robots) const;
   void printCollisions(const std::vector<Collision>& collisions,
