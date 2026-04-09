@@ -1,0 +1,136 @@
+#include "collision_detector.h"
+#include "grid_planner.h"
+
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+namespace {
+
+void require(bool condition, const std::string& message) {
+  if (!condition) {
+    throw std::runtime_error(message);
+  }
+}
+
+void expectNoCollisions(const std::vector<Robot>& robots,
+                        const std::string& test_name) {
+  CollisionDetector detector;
+  const std::vector<Collision> collisions = detector.detectCollisions(robots);
+  require(collisions.empty(), test_name + ": expected no collisions");
+}
+
+void expectOneVertexCollision(const std::vector<Robot>& robots,
+                              int expected_time,
+                              const Point& expected_location,
+                              const std::string& test_name) {
+  CollisionDetector detector;
+  const std::vector<Collision> collisions = detector.detectCollisions(robots);
+
+  require(collisions.size() == 1,
+          test_name + ": expected exactly one collision");
+  require(collisions[0].type == CollisionType::Vertex,
+          test_name + ": expected a vertex collision");
+  require(collisions[0].time_step == expected_time,
+          test_name + ": wrong vertex collision time");
+  require(collisions[0].location == expected_location,
+          test_name + ": wrong vertex collision location");
+}
+
+void expectOneEdgeCollision(const std::vector<Robot>& robots,
+                            int expected_time,
+                            const Point& expected_from_a,
+                            const Point& expected_to_a,
+                            const std::string& test_name) {
+  CollisionDetector detector;
+  const std::vector<Collision> collisions = detector.detectCollisions(robots);
+
+  require(collisions.size() == 1,
+          test_name + ": expected exactly one collision");
+  require(collisions[0].type == CollisionType::Edge,
+          test_name + ": expected an edge collision");
+  require(collisions[0].time_step == expected_time,
+          test_name + ": wrong edge collision time");
+  require(collisions[0].from_a == expected_from_a &&
+              collisions[0].to_a == expected_to_a,
+          test_name + ": wrong edge collision move");
+}
+
+void testPlannerCreatesRowRobots() {
+  GridPlanner planner(3, 4);
+  planner.createRowRobots();
+
+  const std::vector<Robot>& robots = planner.robots();
+  require(robots.size() == 3, "planner: expected one robot per row");
+
+  require(robots[0].start == Point{0, 0}, "planner: wrong start for robot 1");
+  require(robots[0].goal == Point{0, 3}, "planner: wrong goal for robot 1");
+  require(robots[1].start == Point{1, 0}, "planner: wrong start for robot 2");
+  require(robots[1].goal == Point{1, 3}, "planner: wrong goal for robot 2");
+  require(robots[2].path.size() == 4, "planner: wrong path length");
+  require(robots[2].path.front() == Point{2, 0},
+          "planner: wrong first path point");
+  require(robots[2].path.back() == Point{2, 3},
+          "planner: wrong last path point");
+}
+
+void testNoCollisionCase() {
+  const std::vector<Robot> robots = {
+      {1, {0, 0}, {0, 2}, {{0, 0}, {0, 1}, {0, 2}}},
+      {2, {1, 0}, {1, 2}, {{1, 0}, {1, 1}, {1, 2}}},
+  };
+
+  expectNoCollisions(robots, "no_collision");
+}
+
+void testVertexCollisionCase() {
+  const std::vector<Robot> robots = {
+      {1, {0, 0}, {0, 2}, {{0, 0}, {0, 1}, {0, 2}}},
+      {2, {0, 2}, {0, 0}, {{0, 2}, {0, 1}, {0, 0}}},
+  };
+
+  expectOneVertexCollision(robots, 1, {0, 1}, "vertex_collision");
+}
+
+void testEdgeCollisionCase() {
+  const std::vector<Robot> robots = {
+      {1, {1, 0}, {1, 1}, {{1, 0}, {1, 1}}},
+      {2, {1, 1}, {1, 0}, {{1, 1}, {1, 0}}},
+  };
+
+  expectOneEdgeCollision(robots, 0, {1, 0}, {1, 1}, "edge_collision");
+}
+
+void testWaitAtGoalCollisionCase() {
+  const std::vector<Robot> robots = {
+      {1, {0, 0}, {0, 1}, {{0, 0}, {0, 1}}},
+      {2, {0, 2}, {0, 1}, {{0, 2}, {0, 2}, {0, 1}}},
+  };
+
+  expectOneVertexCollision(robots, 2, {0, 1}, "wait_at_goal_collision");
+}
+
+void runTest(void (*test_fn)(), const std::string& test_name) {
+  test_fn();
+  std::cout << "[PASS] " << test_name << "\n";
+}
+
+}  // namespace
+
+int main() {
+  try {
+    runTest(testPlannerCreatesRowRobots, "planner_creates_row_robots");
+    runTest(testNoCollisionCase, "no_collision");
+    runTest(testVertexCollisionCase, "vertex_collision");
+    runTest(testEdgeCollisionCase, "edge_collision");
+    runTest(testWaitAtGoalCollisionCase, "wait_at_goal_collision");
+  } catch (const std::exception& error) {
+    std::cerr << "[FAIL] " << error.what() << "\n";
+    return 1;
+  }
+
+  std::cout << "All project tests passed.\n";
+  return 0;
+}
