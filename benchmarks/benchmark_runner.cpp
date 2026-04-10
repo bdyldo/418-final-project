@@ -1,6 +1,6 @@
 #include "benchmark_cases.h"
-#include "cbs.h"
 #include "collision_detector.h"
+#include "greedy_repair.h"
 #include "grid_renderer.h"
 
 #include <chrono>
@@ -26,17 +26,18 @@ int totalPathCost(const std::vector<Robot>& robots) {
 // Runs one benchmark case, verifies the solution, optionally writes SVGs, and prints the timing result.
 void runBenchmarkCase(const BenchmarkCase& benchmark_case,
                       const std::optional<std::string>& svg_dir) {
-  CBSPlanner planner(benchmark_case.rows, benchmark_case.cols);
   CollisionDetector collision_detector;
-  CBSStats stats;
 
   const auto start_time = std::chrono::steady_clock::now();
-  const auto solution = planner.findPaths(benchmark_case.robots, &stats);
-  const auto end_time = std::chrono::steady_clock::now();
+  GreedyRepairStats greedy_stats;
+  GreedyRepairPlanner planner(benchmark_case.rows, benchmark_case.cols);
+  const auto solution = planner.findPaths(benchmark_case.robots, &greedy_stats);
 
   if (!solution.has_value()) {
-    throw std::runtime_error(benchmark_case.name + ": CBS failed to find a solution");
+    throw std::runtime_error(benchmark_case.name +
+                             ": greedy repair failed to find a solution");
   }
+  const auto end_time = std::chrono::steady_clock::now();
 
   const std::vector<Collision> collisions =
       collision_detector.detectCollisions(*solution);
@@ -67,15 +68,16 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
             << " | grid=" << benchmark_case.rows << "x" << benchmark_case.cols
             << " | robots=" << benchmark_case.robot_count
             << " | total_cost=" << totalPathCost(*solution)
+            << " | planner=greedy"
             << " | time_ms=" << std::fixed << std::setprecision(3)
             << elapsed_ms.count()
-            << " | cbs_nodes=" << stats.high_level_nodes_expanded
-            << " | a_star_calls=" << stats.low_level_searches
-            << " | collisions=" << stats.collisions_resolved
-            << " | duplicates=" << stats.duplicate_nodes_pruned
-            << " | bypasses=" << stats.bypasses_applied
-            << " | states_expanded=" << stats.low_level_states_expanded
-            << " | states_generated=" << stats.low_level_states_generated;
+            << " | repair_iters=" << greedy_stats.repair_iterations
+            << " | a_star_calls=" << greedy_stats.low_level_searches
+            << " | successful_repairs=" << greedy_stats.successful_repairs
+            << " | failed_repairs=" << greedy_stats.failed_repairs
+            << " | stagnant_repairs=" << greedy_stats.stagnant_repairs
+            << " | states_expanded=" << greedy_stats.low_level_states_expanded
+            << " | states_generated=" << greedy_stats.low_level_states_generated;
   if (!input_svg_output.empty()) {
     std::cout << " | input_svg=" << input_svg_output
               << " | solution_svg=" << solution_svg_output;
@@ -93,16 +95,29 @@ void printUsage(const char* program_name) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 2 && argc != 3) {
-    printUsage(argv[0]);
-    return 1;
-  }
-
   try {
+    std::optional<std::string> case_name;
+    std::optional<std::string> svg_dir;
+
+    for (int i = 1; i < argc; ++i) {
+      const std::string arg = argv[i];
+      if (!case_name.has_value()) {
+        case_name = arg;
+      } else if (!svg_dir.has_value()) {
+        svg_dir = arg;
+      } else {
+        printUsage(argv[0]);
+        return 1;
+      }
+    }
+
+    if (!case_name.has_value()) {
+      printUsage(argv[0]);
+      return 1;
+    }
+
     const std::vector<BenchmarkCaseDefinition> definitions =
-        selectBenchmarkCaseDefinitions(argv[1]);
-    const std::optional<std::string> svg_dir =
-        argc == 3 ? std::optional<std::string>(argv[2]) : std::nullopt;
+        selectBenchmarkCaseDefinitions(*case_name);
 
     for (const BenchmarkCaseDefinition& definition : definitions) {
       runBenchmarkCase(buildBenchmarkCase(definition), svg_dir);

@@ -71,7 +71,7 @@
   <rect x="818" y="818" width="16" height="16" fill="#dc2626" stroke="#0f172a" stroke-width="2"/>
   <text x="266" y="171" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R1</text>
   <text x="826" y="846" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R1</text>
-  <polyline fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78" points="238,266 266,266 294,266 322,266 322,294 350,294 378,294 406,294 434,294 462,294 490,294 490,322 490,350 490,378 518,378 546,378 574,378 602,378 630,378 658,378 686,378 714,378 742,378 742,406 742,434 742,462 742,490 770,490 798,490 826,490 826,518 826,546 826,574 826,602 854,602 854,630 854,658 854,686 854,714 882,714 910,714 "/>
+  <polyline fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78" points="238,266 266,266 294,266 322,266 322,294 350,294 378,294 406,294 434,294 462,294 490,294 490,322 490,350 490,378 518,378 546,378 574,378 602,378 630,378 658,378 686,378 714,378 742,378 742,406 742,434 742,462 742,490 770,490 798,490 798,518 798,546 798,574 798,602 798,630 798,658 798,686 798,714 826,714 854,714 882,714 910,714 "/>
   <circle cx="238" cy="266" r="8" fill="#2563eb" stroke="#0f172a" stroke-width="1.5"/>
   <rect x="902" y="706" width="16" height="16" fill="#2563eb" stroke="#0f172a" stroke-width="2"/>
   <text x="238" y="255" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R2</text>
@@ -81,7 +81,7 @@
   <rect x="818" y="622" width="16" height="16" fill="#16a34a" stroke="#0f172a" stroke-width="2"/>
   <text x="98" y="423" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R3</text>
   <text x="826" y="650" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R3</text>
-  <polyline fill="none" stroke="#ea580c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78" points="42,462 70,462 98,462 126,462 126,490 126,518 154,518 182,518 210,518 238,518 266,518 294,518 322,518 350,518 378,518 406,518 434,518 462,518 490,518 518,518 546,518 574,518 602,518 630,518 658,518 686,518 714,518 742,518 770,518 798,518 "/>
+  <polyline fill="none" stroke="#ea580c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78" points="42,462 70,462 98,462 126,462 126,490 126,518 154,518 182,518 210,518 238,518 266,518 294,518 322,518 350,518 378,518 406,518 434,518 462,518 490,518 518,518 546,518 574,518 602,518 630,518 658,518 686,518 714,518 742,518 770,518 770,518 798,518 "/>
   <circle cx="42" cy="462" r="8" fill="#ea580c" stroke="#0f172a" stroke-width="1.5"/>
   <rect x="790" y="510" width="16" height="16" fill="#ea580c" stroke="#0f172a" stroke-width="2"/>
   <text x="42" y="451" text-anchor="middle" font-size="10" font-family="Arial" font-weight="700" fill="#0f172a">R4</text>
