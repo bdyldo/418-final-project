@@ -2,11 +2,11 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -O2
 
 TARGET := grid_demo
-SRCS := src/main.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/cbs.cpp
+SRCS := src/main.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
 TEST_TARGET := project_tests
-TEST_SRCS := tests/project_tests.cpp src/grid_planner.cpp src/collision_detector.cpp src/a_star.cpp src/cbs.cpp
+TEST_SRCS := tests/project_tests.cpp src/grid_planner.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
 BENCHMARK_TARGET := benchmark_runner
-BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/cbs.cpp
+BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
 BENCHMARK_SRCS := benchmarks/benchmark_runner.cpp $(BENCHMARK_COMMON_SRCS)
 BENCHMARK_CASE_TOOL_TARGET := benchmark_case_tool
 BENCHMARK_CASE_TOOL_SRCS := benchmarks/benchmark_case_tool.cpp src/benchmark_cases.cpp
@@ -19,13 +19,13 @@ BENCHMARK_SVG_DIR := benchmark_svgs
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS) src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/cbs.h
+$(TARGET): $(SRCS) src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
 	$(CXX) $(CXXFLAGS) $(SRCS) -o $(TARGET)
 
-$(TEST_TARGET): $(TEST_SRCS) src/grid_planner.h src/collision_detector.h src/constraints.h src/a_star.h src/cbs.h
+$(TEST_TARGET): $(TEST_SRCS) src/grid_planner.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
 	$(CXX) $(CXXFLAGS) -I src $(TEST_SRCS) -o $(TEST_TARGET)
 
-$(BENCHMARK_TARGET): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/cbs.h
+$(BENCHMARK_TARGET): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
 	$(CXX) $(CXXFLAGS) -I src $(BENCHMARK_SRCS) -o $(BENCHMARK_TARGET)
 
 $(BENCHMARK_CASE_TOOL_TARGET): $(BENCHMARK_CASE_TOOL_SRCS) src/benchmark_cases.h src/grid_planner.h

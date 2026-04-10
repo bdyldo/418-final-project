@@ -1,5 +1,5 @@
-#include "cbs.h"
 #include "collision_detector.h"
+#include "greedy_repair.h"
 #include "grid_planner.h"
 #include "grid_renderer.h"
 
@@ -16,7 +16,7 @@ namespace {
 
 enum class Strategy {
   Straight,
-  CBS,
+  Greedy,
 };
 
 int parsePositiveInt(const char* value, const std::string& name) {
@@ -36,21 +36,24 @@ Strategy parseStrategy(const std::string& value) {
   if (value == "straight") {
     return Strategy::Straight;
   }
-  if (value == "cbs") {
-    return Strategy::CBS;
+  if (value == "greedy") {
+    return Strategy::Greedy;
   }
-  throw std::invalid_argument("strategy must be 'straight' or 'cbs'");
+  throw std::invalid_argument("strategy must be 'straight' or 'greedy'");
 }
 
 std::string strategyName(Strategy strategy) {
-  return strategy == Strategy::Straight ? "straight" : "cbs";
+  if (strategy == Strategy::Straight) {
+    return "straight";
+  }
+  return "greedy";
 }
 
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
-            << " [rows] [cols] [output.svg] [--print] [--strategy straight|cbs]\n";
+            << " [rows] [cols] [output.svg] [--print] [--strategy straight|greedy]\n";
   std::cerr << "Example: " << program_name
-            << " 5 10 grid_paths.svg --strategy cbs\n";
+            << " 5 10 grid_paths.svg --strategy greedy\n";
 }
 
 }  // namespace
@@ -60,7 +63,7 @@ int main(int argc, char** argv) {
   int cols = 10;
   std::string output_path = "grid_paths.svg";
   bool print_terminal_grid = false;
-  Strategy strategy = Strategy::CBS;
+  Strategy strategy = Strategy::Greedy;
 
   try {
     int positional_index = 0;
@@ -101,10 +104,10 @@ int main(int argc, char** argv) {
       planner.createRowRobots();
       solved_robots = planner.robots();
     } else {
-      CBSPlanner cbs_planner(rows, cols);
-      const auto solution = cbs_planner.findPaths(planner.createRowRobotSpecs());
+      GreedyRepairPlanner greedy_planner(rows, cols);
+      const auto solution = greedy_planner.findPaths(planner.createRowRobotSpecs());
       if (!solution.has_value()) {
-        std::cerr << "error: CBS failed to find a solution for this scenario\n";
+        std::cerr << "error: greedy repair failed to find a solution for this scenario\n";
         return EXIT_FAILURE;
       }
       solved_robots = *solution;

@@ -1,6 +1,6 @@
 #include "a_star.h"
-#include "cbs.h"
 #include "collision_detector.h"
+#include "greedy_repair.h"
 #include "grid_planner.h"
 
 #include <exception>
@@ -146,29 +146,30 @@ void testAStarRespectsVertexConstraint() {
   require(path->back() == Point{0, 2}, "a_star_constraint: wrong goal");
 }
 
-void testCBSResolvesSimpleSwap() {
+void testGreedyRepairResolvesSimpleSwap() {
   std::vector<Robot> robots = {
       {1, {0, 0}, {0, 1}, {}},
       {2, {0, 1}, {0, 0}, {}},
   };
 
-  CBSPlanner planner(2, 2);
+  GreedyRepairPlanner planner(2, 2);
   const auto solution = planner.findPaths(robots);
 
-  require(solution.has_value(), "cbs_simple_swap: expected a solution");
+  require(solution.has_value(), "greedy_simple_swap: expected a solution");
 
   CollisionDetector detector;
   const std::vector<Collision> collisions =
       detector.detectCollisions(*solution);
-  require(collisions.empty(), "cbs_simple_swap: solution still has collisions");
+  require(collisions.empty(),
+          "greedy_simple_swap: solution still has collisions");
   require((*solution)[0].path.front() == Point{0, 0},
-          "cbs_simple_swap: wrong robot 1 start");
+          "greedy_simple_swap: wrong robot 1 start");
   require((*solution)[0].path.back() == Point{0, 1},
-          "cbs_simple_swap: wrong robot 1 goal");
+          "greedy_simple_swap: wrong robot 1 goal");
   require((*solution)[1].path.front() == Point{0, 1},
-          "cbs_simple_swap: wrong robot 2 start");
+          "greedy_simple_swap: wrong robot 2 start");
   require((*solution)[1].path.back() == Point{0, 0},
-          "cbs_simple_swap: wrong robot 2 goal");
+          "greedy_simple_swap: wrong robot 2 goal");
 }
 
 void runTest(void (*test_fn)(), const std::string& test_name) {
@@ -189,7 +190,7 @@ int main() {
             "a_star_shortest_path");
     runTest(testAStarRespectsVertexConstraint,
             "a_star_constraint");
-    runTest(testCBSResolvesSimpleSwap, "cbs_simple_swap");
+    runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
   } catch (const std::exception& error) {
     std::cerr << "[FAIL] " << error.what() << "\n";
     return 1;
