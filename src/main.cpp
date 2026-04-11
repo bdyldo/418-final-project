@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace {
 
 enum class Strategy {
@@ -122,9 +126,9 @@ int finalRobotDetourCount(const std::vector<Robot>& robots) {
 
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
-            << " [rows] [cols] [output.svg] [--print] [--strategy straight|greedy]\n";
+            << " [rows] [cols] [output.svg] [--print] [--strategy straight|greedy] [-N threads]\n";
   std::cerr << "Example: " << program_name
-            << " 5 10 grid_paths.svg --strategy greedy\n";
+            << " 5 10 grid_paths.svg --strategy greedy -N 8\n";
 }
 
 }  // namespace
@@ -135,6 +139,9 @@ int main(int argc, char** argv) {
   std::string output_path = "grid_paths.svg";
   bool print_terminal_grid = false;
   Strategy strategy = Strategy::Greedy;
+  int greedy_top_k_conflicts = 0;
+  int greedy_workers = 1;
+  std::optional<int> thread_count;
 
   try {
     int positional_index = 0;
@@ -149,6 +156,12 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
         strategy = parseStrategy(argv[++i]);
+      } else if (arg == "-N") {
+        if (i + 1 >= argc) {
+          printUsage(argv[0]);
+          return EXIT_FAILURE;
+        }
+        thread_count = parsePositiveInt(argv[++i], "thread count");
       } else if (arg.rfind("--", 0) == 0) {
         printUsage(argv[0]);
         return EXIT_FAILURE;
@@ -167,6 +180,17 @@ int main(int argc, char** argv) {
       }
     }
 
+#ifdef _OPENMP
+    if (thread_count.has_value()) {
+      omp_set_num_threads(*thread_count);
+    }
+#else
+    if (thread_count.has_value()) {
+      std::cerr << "warning: OpenMP is not enabled, ignoring -N "
+                << *thread_count << "\n";
+    }
+#endif
+
     GridPlanner planner(rows, cols);
     std::vector<Robot> solved_robots;
 
@@ -176,6 +200,8 @@ int main(int argc, char** argv) {
       solved_robots = planner.robots();
     } else {
       GreedyRepairPlanner greedy_planner(rows, cols);
+      greedy_top_k_conflicts = greedy_planner.topKConflicts();
+      greedy_workers = greedy_planner.maxWorkerCount();
       const auto solution = greedy_planner.findPaths(planner.createRowRobotSpecs());
       if (!solution.has_value()) {
         std::cerr << "error: greedy repair failed to find a solution for this scenario\n";
@@ -190,6 +216,10 @@ int main(int argc, char** argv) {
     GridRenderer renderer(rows, cols, solved_robots);
     renderer.printRobotSummary(std::cout);
     std::cout << "\nStrategy: " << strategyName(strategy) << "\n";
+    if (strategy == Strategy::Greedy) {
+      std::cout << "Top-K conflicts: " << greedy_top_k_conflicts
+                << " | Workers: " << greedy_workers << "\n";
+    }
     std::cout << "Planning time: " << std::fixed << std::setprecision(3)
               << elapsed_ms.count() << " ms\n";
     std::cout << "Total time: " << totalTime(solved_robots) << "\n";

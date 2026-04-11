@@ -14,6 +14,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace {
 
 const Robot* finalRobot(const std::vector<Robot>& robots) {
@@ -98,6 +102,19 @@ int finalRobotDetourCount(const std::vector<Robot>& robots) {
   return detour_count;
 }
 
+int parsePositiveInt(const char* value, const std::string& name) {
+  try {
+    size_t parsed_chars = 0;
+    const int parsed_value = std::stoi(value, &parsed_chars);
+    if (parsed_chars != std::string(value).size() || parsed_value <= 0) {
+      throw std::invalid_argument("not a positive integer");
+    }
+    return parsed_value;
+  } catch (const std::exception&) {
+    throw std::invalid_argument(name + " must be a positive integer");
+  }
+}
+
 // Runs one benchmark case, verifies the solution, optionally writes SVGs, and prints the timing result.
 void runBenchmarkCase(const BenchmarkCase& benchmark_case,
                       const std::optional<std::string>& svg_dir) {
@@ -142,7 +159,9 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   std::cout << benchmark_case.name << "\n"
             << "  Grid: " << benchmark_case.rows << "x" << benchmark_case.cols
             << " | Robots: " << benchmark_case.robot_count
-            << " | Planner: greedy\n"
+            << " | Planner: greedy-topk"
+            << " | Top-K conflicts: " << planner.topKConflicts()
+            << " | Workers: " << planner.maxWorkerCount() << "\n"
             << "  Total cost: " << totalPathCost(*solution)
             << " | Total time: " << totalTime(*solution)
             << " | Final robot wait time: " << finalRobotWaitTime(*solution)
@@ -150,7 +169,10 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
             << " | Runtime: " << std::fixed << std::setprecision(3)
             << elapsed_ms.count() << " ms\n"
             << "  Repair iterations: " << greedy_stats.repair_iterations
-            << " | A* calls: " << greedy_stats.low_level_searches
+            << " | Conflicts considered: " << greedy_stats.conflicts_considered
+            << " | Candidate repairs: "
+            << greedy_stats.candidate_repairs_evaluated << "\n"
+            << "  A* calls: " << greedy_stats.low_level_searches
             << " | Successful repairs: " << greedy_stats.successful_repairs
             << " | Failed repairs: " << greedy_stats.failed_repairs
             << " | Stagnant repairs: " << greedy_stats.stagnant_repairs << "\n"
@@ -167,7 +189,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
             << " <few|medium|abundant|few_8|few_16|medium_16|medium_32|abundant_64|abundant_128>"
-            << " [svg_output_dir]\n";
+            << " [svg_output_dir] [-N threads]\n";
   std::cerr << "Benchmark case store: " << benchmarkCaseStorePath() << "\n";
 }
 
@@ -177,10 +199,17 @@ int main(int argc, char** argv) {
   try {
     std::optional<std::string> case_name;
     std::optional<std::string> svg_dir;
+    std::optional<int> thread_count;
 
     for (int i = 1; i < argc; ++i) {
       const std::string arg = argv[i];
-      if (!case_name.has_value()) {
+      if (arg == "-N") {
+        if (i + 1 >= argc) {
+          printUsage(argv[0]);
+          return 1;
+        }
+        thread_count = parsePositiveInt(argv[++i], "thread count");
+      } else if (!case_name.has_value()) {
         case_name = arg;
       } else if (!svg_dir.has_value()) {
         svg_dir = arg;
@@ -194,6 +223,17 @@ int main(int argc, char** argv) {
       printUsage(argv[0]);
       return 1;
     }
+
+#ifdef _OPENMP
+    if (thread_count.has_value()) {
+      omp_set_num_threads(*thread_count);
+    }
+#else
+    if (thread_count.has_value()) {
+      std::cerr << "warning: OpenMP is not enabled, ignoring -N "
+                << *thread_count << "\n";
+    }
+#endif
 
     const std::vector<BenchmarkCaseDefinition> definitions =
         selectBenchmarkCaseDefinitions(*case_name);
