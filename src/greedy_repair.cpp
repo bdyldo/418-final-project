@@ -27,18 +27,6 @@ struct RepairTask {
   Constraint new_constraint;
 };
 
-int resolveTopKConflicts(int requested_top_k_conflicts) {
-  if (requested_top_k_conflicts > 0) {
-    return requested_top_k_conflicts;
-  }
-
-#ifdef _OPENMP
-  return std::max(1, omp_get_max_threads());
-#else
-  return 1;
-#endif
-}
-
 bool betterCandidate(const RepairCandidate& lhs,
                      const RepairCandidate& rhs) {
   return std::tie(lhs.collision_count, lhs.total_cost) <
@@ -136,7 +124,7 @@ GreedyRepairPlanner::GreedyRepairPlanner(int rows,
     : rows_(rows),
       cols_(cols),
       max_repairs_(max_repairs),
-      top_k_conflicts_(resolveTopKConflicts(top_k_conflicts)),
+      top_k_conflicts_(top_k_conflicts),
       a_star_(rows, cols) {
   if (rows_ <= 0 || cols_ <= 0) {
     throw std::invalid_argument("grid dimensions must be positive");

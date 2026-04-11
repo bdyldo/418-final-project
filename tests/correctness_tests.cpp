@@ -9,10 +9,6 @@
 #include <string>
 #include <vector>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 namespace {
 
 void require(bool condition, const std::string& message) {
@@ -176,23 +172,6 @@ void testGreedyRepairResolvesSimpleSwap() {
           "greedy_simple_swap: wrong robot 2 goal");
 }
 
-void testGreedyRepairDefaultTopKMatchesThreadCount() {
-#ifdef _OPENMP
-  const int previous_thread_count = omp_get_max_threads();
-  omp_set_num_threads(4);
-  GreedyRepairPlanner planner(2, 2);
-  const int actual_top_k_conflicts = planner.topKConflicts();
-  omp_set_num_threads(previous_thread_count);
-
-  require(actual_top_k_conflicts == 4,
-          "greedy_default_top_k: expected top-k conflicts to match OpenMP thread count");
-#else
-  GreedyRepairPlanner planner(2, 2);
-  require(planner.topKConflicts() == 1,
-          "greedy_default_top_k: expected single-thread default without OpenMP");
-#endif
-}
-
 void runTest(void (*test_fn)(), const std::string& test_name) {
   test_fn();
   std::cout << "[PASS] " << test_name << "\n";
@@ -212,8 +191,6 @@ int main() {
     runTest(testAStarRespectsVertexConstraint,
             "a_star_constraint");
     runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
-    runTest(testGreedyRepairDefaultTopKMatchesThreadCount,
-            "greedy_default_top_k_matches_thread_count");
   } catch (const std::exception& error) {
     std::cerr << "[FAIL] " << error.what() << "\n";
     return 1;
