@@ -1,0 +1,6 @@
+few_16
+  Grid: 32x32 | Robots: 16 | Planner: greedy
+  Total cost: 635 | Total time: 56 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 128.829 ms
+  Repair iterations: 114 | A* calls: 244 | Successful repairs: 114 | Failed repairs: 0 | Stagnant repairs: 83
+  States expanded: 90378 | States generated: 282969
+  Input SVG: benchmark_svgs/few_16_input.svg | Solution SVG: benchmark_svgs/few_16_solution.svg
