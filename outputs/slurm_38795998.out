@@ -1,0 +1,7 @@
+Building benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner  -fopenmp
+/var/tmp/ccT7EsHi.o: In function `main':
+benchmark_runner.cpp:(.text.startup+0x4e5): undefined reference to `std::filesystem::__cxx11::path::_M_split_cmpts()'
+benchmark_runner.cpp:(.text.startup+0x4f2): undefined reference to `std::filesystem::create_directories(std::filesystem::__cxx11::path const&)'
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:49: benchmark_runner] Error 1
