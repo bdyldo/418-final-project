@@ -1,0 +1,67 @@
+Building benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner  -fopenmp  -lstdc++fs
+=== medium_32 with N=1 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 1 | Workers: 1
+  Total cost: 5233 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 2075.448 ms
+  Repair iterations: 112 | Conflicts considered: 112 | Candidate repairs: 224
+  A* calls: 256 | Successful repairs: 112 | Failed repairs: 0 | Stagnant repairs: 68
+  States expanded: 1967914 | States generated: 4649817
+
+=== medium_32 with N=2 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 2 | Workers: 2
+  Total cost: 5202 | Total time: 239 | Final robot wait time: 1 | Final robot detours: 0 | Runtime: 8607.228 ms
+  Repair iterations: 316 | Conflicts considered: 519 | Candidate repairs: 1038
+  A* calls: 1070 | Successful repairs: 316 | Failed repairs: 0 | Stagnant repairs: 198
+  States expanded: 11979734 | States generated: 32176052
+
+=== medium_32 with N=4 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 4 | Workers: 4
+  Total cost: 5202 | Total time: 239 | Final robot wait time: 1 | Final robot detours: 0 | Runtime: 9960.318 ms
+  Repair iterations: 276 | Conflicts considered: 685 | Candidate repairs: 1370
+  A* calls: 1402 | Successful repairs: 276 | Failed repairs: 0 | Stagnant repairs: 174
+  States expanded: 19843185 | States generated: 49005706
+
+=== medium_32 with N=8 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 8
+  Total cost: 5202 | Total time: 239 | Final robot wait time: 1 | Final robot detours: 0 | Runtime: 8915.025 ms
+  Repair iterations: 272 | Conflicts considered: 758 | Candidate repairs: 1516
+  A* calls: 1548 | Successful repairs: 272 | Failed repairs: 0 | Stagnant repairs: 173
+  States expanded: 21945443 | States generated: 54953109
+
+=== medium_32 with N=16 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 16 | Workers: 16
+  Total cost: 5317 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 18742.193 ms
+  Repair iterations: 523 | Conflicts considered: 1215 | Candidate repairs: 2430
+  A* calls: 2462 | Successful repairs: 523 | Failed repairs: 0 | Stagnant repairs: 315
+  States expanded: 39914790 | States generated: 95435840
+
+=== medium_32 with N=32 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 32 | Workers: 32
+  Total cost: 5202 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 2687.566 ms
+  Repair iterations: 94 | Conflicts considered: 269 | Candidate repairs: 538
+  A* calls: 570 | Successful repairs: 94 | Failed repairs: 0 | Stagnant repairs: 56
+  States expanded: 6341707 | States generated: 14342503
+
+=== medium_32 with N=64 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 64 | Workers: 64
+  Total cost: 5202 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 2979.068 ms
+  Repair iterations: 94 | Conflicts considered: 282 | Candidate repairs: 564
+  A* calls: 596 | Successful repairs: 94 | Failed repairs: 0 | Stagnant repairs: 56
+  States expanded: 7556037 | States generated: 16302692
+
+=== medium_32 with N=128 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 128 | Workers: 128
+  Total cost: 5202 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 3058.699 ms
+  Repair iterations: 94 | Conflicts considered: 282 | Candidate repairs: 564
+  A* calls: 596 | Successful repairs: 94 | Failed repairs: 0 | Stagnant repairs: 56
+  States expanded: 7556037 | States generated: 16302692
+
+Combined results written to benchmark_results/medium_32_scaling_38796704.txt
