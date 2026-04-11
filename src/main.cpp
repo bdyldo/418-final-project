@@ -3,6 +3,7 @@
 #include "grid_planner.h"
 #include "grid_renderer.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <exception>
@@ -47,6 +48,76 @@ std::string strategyName(Strategy strategy) {
     return "straight";
   }
   return "greedy";
+}
+
+const Robot* finalRobot(const std::vector<Robot>& robots) {
+  const Robot* final_robot = nullptr;
+  int last_finish_time = -1;
+
+  for (const Robot& robot : robots) {
+    const int finish_time = robot.path.empty()
+        ? -1
+        : static_cast<int>(robot.path.size()) - 1;
+    if (finish_time > last_finish_time) {
+      last_finish_time = finish_time;
+      final_robot = &robot;
+    }
+  }
+
+  return final_robot;
+}
+
+int manhattanDistance(const Point& lhs, const Point& rhs) {
+  return std::abs(lhs.row - rhs.row) + std::abs(lhs.col - rhs.col);
+}
+
+int totalTime(const std::vector<Robot>& robots) {
+  int last_finish_time = 0;
+  for (const Robot& robot : robots) {
+    if (robot.path.empty()) {
+      continue;
+    }
+    last_finish_time = std::max(
+        last_finish_time, static_cast<int>(robot.path.size()) - 1);
+  }
+  return last_finish_time;
+}
+
+int finalRobotWaitTime(const std::vector<Robot>& robots) {
+  const Robot* final_robot = finalRobot(robots);
+  if (final_robot == nullptr) {
+    return 0;
+  }
+
+  int wait_time = 0;
+  for (int i = 1; i < static_cast<int>(final_robot->path.size()); ++i) {
+    if (final_robot->path[i] == final_robot->path[i - 1]) {
+      ++wait_time;
+    }
+  }
+  return wait_time;
+}
+
+int finalRobotDetourCount(const std::vector<Robot>& robots) {
+  const Robot* final_robot = finalRobot(robots);
+  if (final_robot == nullptr) {
+    return 0;
+  }
+
+  int detour_count = 0;
+  for (int i = 1; i < static_cast<int>(final_robot->path.size()); ++i) {
+    const Point& previous = final_robot->path[i - 1];
+    const Point& current = final_robot->path[i];
+    if (current == previous) {
+      continue;
+    }
+
+    if (manhattanDistance(current, final_robot->goal) >=
+        manhattanDistance(previous, final_robot->goal)) {
+      ++detour_count;
+    }
+  }
+  return detour_count;
 }
 
 void printUsage(const char* program_name) {
@@ -121,6 +192,9 @@ int main(int argc, char** argv) {
     std::cout << "\nStrategy: " << strategyName(strategy) << "\n";
     std::cout << "Planning time: " << std::fixed << std::setprecision(3)
               << elapsed_ms.count() << " ms\n";
+    std::cout << "Total time: " << totalTime(solved_robots) << "\n";
+    std::cout << "Final robot wait time: " << finalRobotWaitTime(solved_robots) << "\n";
+    std::cout << "Final robot detours: " << finalRobotDetourCount(solved_robots) << "\n";
 
     CollisionDetector collision_detector;
     const std::vector<Collision> collisions =
