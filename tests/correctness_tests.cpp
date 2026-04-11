@@ -152,7 +152,7 @@ void testGreedyRepairResolvesSimpleSwap() {
       {2, {0, 1}, {0, 0}, {}},
   };
 
-  GreedyRepairPlanner planner(2, 2);
+  GreedyRepairPlanner planner(2, 2, 10000, 4);
   const auto solution = planner.findPaths(robots);
 
   require(solution.has_value(), "greedy_simple_swap: expected a solution");

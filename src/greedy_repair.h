@@ -11,6 +11,8 @@
 
 struct GreedyRepairStats {
   long long repair_iterations = 0;
+  long long conflicts_considered = 0;
+  long long candidate_repairs_evaluated = 0;
   long long low_level_searches = 0;
   long long low_level_states_expanded = 0;
   long long low_level_states_generated = 0;
@@ -21,16 +23,23 @@ struct GreedyRepairStats {
 
 class GreedyRepairPlanner {
  public:
-  GreedyRepairPlanner(int rows, int cols, int max_repairs = 10000);
+  GreedyRepairPlanner(int rows,
+                      int cols,
+                      int max_repairs = 10000,
+                      int top_k_conflicts = 8);
 
   std::optional<std::vector<Robot>> findPaths(
       const std::vector<Robot>& robots,
       GreedyRepairStats* stats = nullptr) const;
 
+  int topKConflicts() const;
+  int maxWorkerCount() const;
+
  private:
   int rows_;
   int cols_;
   int max_repairs_;
+  int top_k_conflicts_;
   AStarPlanner a_star_;
   CollisionDetector collision_detector_;
 
