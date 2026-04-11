@@ -1,0 +1,4 @@
+Building benchmark target...
+make: 'benchmark_runner' is up to date.
+=== medium_32 with N=1 ===
+/var/spool/slurm/d/job38795812/slurm_script: line 37: ./benchmark_runner: cannot execute binary file: Exec format error

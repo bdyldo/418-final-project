@@ -4,6 +4,7 @@ BASE_CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -O2
 UNAME_S := $(shell uname -s)
 OPENMP_CXXFLAGS :=
 OPENMP_LDFLAGS :=
+FILESYSTEM_LDFLAGS :=
 
 ifeq ($(UNAME_S),Darwin)
 LIBOMP_PREFIX := $(shell brew --prefix libomp 2>/dev/null)
@@ -14,10 +15,11 @@ endif
 else
 OPENMP_CXXFLAGS += -fopenmp
 OPENMP_LDFLAGS += -fopenmp
+FILESYSTEM_LDFLAGS += -lstdc++fs
 endif
 
 CXXFLAGS := $(BASE_CXXFLAGS) $(OPENMP_CXXFLAGS)
-LDFLAGS := $(OPENMP_LDFLAGS)
+LDFLAGS := $(OPENMP_LDFLAGS) $(FILESYSTEM_LDFLAGS)
 
 TARGET := grid_demo
 SRCS := src/main.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
