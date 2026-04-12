@@ -1,5 +1,0 @@
-few_8
-  Grid: 32x32 | Robots: 8 | Planner: greedy
-  Total cost: 277 | Total time: 43 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 6.649 ms
-  Repair iterations: 8 | A* calls: 24 | Successful repairs: 8 | Failed repairs: 0 | Stagnant repairs: 6
-  States expanded: 7690 | States generated: 22086

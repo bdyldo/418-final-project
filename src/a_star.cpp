@@ -23,13 +23,24 @@ struct PointHash {
   }
 };
 
+enum class MoveDirection : std::uint8_t {
+  Start = 0,
+  Up,
+  Down,
+  Left,
+  Right,
+};
+
 struct SearchState {
   Point position;
   int time_step;
+  MoveDirection direction;
 };
 
 bool operator==(const SearchState& lhs, const SearchState& rhs) {
-  return lhs.position == rhs.position && lhs.time_step == rhs.time_step;
+  return lhs.position == rhs.position &&
+      lhs.time_step == rhs.time_step &&
+      lhs.direction == rhs.direction;
 }
 
 struct SearchStateHash {
@@ -40,7 +51,10 @@ struct SearchStateHash {
         static_cast<std::uint32_t>(state.position.col);
     const std::uint64_t time_bits =
         static_cast<std::uint32_t>(state.time_step);
-    return static_cast<std::size_t>((row_bits << 42) ^ (col_bits << 21) ^ time_bits);
+    const std::uint64_t direction_bits =
+        static_cast<std::uint8_t>(state.direction);
+    return static_cast<std::size_t>(
+        (row_bits << 42) ^ (col_bits << 21) ^ (time_bits << 3) ^ direction_bits);
   }
 };
 
@@ -48,6 +62,13 @@ struct QueueEntry {
   SearchState state;
   int g_cost;
   int f_cost;
+  int turn_count;
+  std::uint64_t insertion_order;
+};
+
+struct SearchCost {
+  int g_cost;
+  int turn_count;
 };
 
 struct QueueEntryCompare {
@@ -55,7 +76,13 @@ struct QueueEntryCompare {
     if (lhs.f_cost != rhs.f_cost) {
       return lhs.f_cost > rhs.f_cost;
     }
-    return lhs.g_cost > rhs.g_cost;
+    if (lhs.turn_count != rhs.turn_count) {
+      return lhs.turn_count > rhs.turn_count;
+    }
+    if (lhs.g_cost != rhs.g_cost) {
+      return lhs.g_cost > rhs.g_cost;
+    }
+    return lhs.insertion_order > rhs.insertion_order;
   }
 };
 
@@ -78,6 +105,71 @@ std::vector<Point> reconstructPath(
 
   std::reverse(path.begin(), path.end());
   return path;
+}
+
+struct MoveOption {
+  Point delta;
+  MoveDirection direction;
+  bool is_wait;
+  int base_priority;
+};
+
+int pointDistanceToGoal(const Point& point, const Point& goal) {
+  return std::abs(point.row - goal.row) + std::abs(point.col - goal.col);
+}
+
+int turnPenalty(MoveDirection previous_direction, MoveDirection next_direction) {
+  if (previous_direction == MoveDirection::Start ||
+      previous_direction == next_direction) {
+    return 0;
+  }
+  return 1;
+}
+
+std::array<MoveOption, 5> orderedMoves(const SearchState& state,
+                                       const Point& goal) {
+  std::array<MoveOption, 5> moves = {{
+      {{0, 1}, MoveDirection::Right, false, 0},
+      {{-1, 0}, MoveDirection::Up, false, 1},
+      {{1, 0}, MoveDirection::Down, false, 2},
+      {{0, -1}, MoveDirection::Left, false, 3},
+      {{0, 0}, state.direction, true, 4},
+  }};
+
+  const int current_row_distance = std::abs(state.position.row - goal.row);
+  const int current_col_distance = std::abs(state.position.col - goal.col);
+  const bool prefer_horizontal = current_col_distance >= current_row_distance;
+
+  std::sort(moves.begin(), moves.end(),
+            [&](const MoveOption& lhs, const MoveOption& rhs) {
+              auto key = [&](const MoveOption& move) {
+                const Point next_position = {
+                    state.position.row + move.delta.row,
+                    state.position.col + move.delta.col,
+                };
+                const int next_distance = pointDistanceToGoal(next_position, goal);
+                const bool reduces_row =
+                    std::abs(next_position.row - goal.row) < current_row_distance;
+                const bool reduces_col =
+                    std::abs(next_position.col - goal.col) < current_col_distance;
+                const int turn_rank = move.is_wait
+                    ? 0
+                    : turnPenalty(state.direction, move.direction);
+                const int axis_rank = move.is_wait
+                    ? 2
+                    : prefer_horizontal
+                        ? (reduces_col ? 0 : (reduces_row ? 1 : 3))
+                        : (reduces_row ? 0 : (reduces_col ? 1 : 3));
+                return std::make_tuple(
+                    turn_rank,
+                    axis_rank,
+                    next_distance,
+                    move.base_priority);
+              };
+              return key(lhs) < key(rhs);
+            });
+
+  return moves;
 }
 
 struct VertexConstraintKey {
@@ -160,32 +252,32 @@ std::optional<std::vector<Point>> AStarPlanner::findPath(
   }
 
   const int horizon = searchHorizon(robot, constraint_index);
-  const SearchState start_state = {robot.start, 0};
+  const SearchState start_state = {robot.start, 0, MoveDirection::Start};
 
   std::priority_queue<QueueEntry, std::vector<QueueEntry>, QueueEntryCompare> frontier;
-  std::unordered_map<SearchState, int, SearchStateHash> best_cost;
+  std::unordered_map<SearchState, SearchCost, SearchStateHash> best_cost;
   std::unordered_map<SearchState, SearchState, SearchStateHash> came_from;
+  std::uint64_t next_insertion_order = 1;
 
-  best_cost[start_state] = 0;
-  frontier.push({start_state, 0, manhattanDistance(robot.start, robot.goal)});
+  best_cost[start_state] = {0, 0};
+  frontier.push(
+      {start_state,
+       0,
+       manhattanDistance(robot.start, robot.goal),
+       0,
+       0});
   if (stats != nullptr) {
     ++stats->states_generated;
   }
-
-  const std::array<Point, 5> moves = {{
-      {0, 0},
-      {-1, 0},
-      {1, 0},
-      {0, -1},
-      {0, 1},
-  }};
 
   while (!frontier.empty()) {
     const QueueEntry current_entry = frontier.top();
     frontier.pop();
 
     const auto best_it = best_cost.find(current_entry.state);
-    if (best_it == best_cost.end() || current_entry.g_cost != best_it->second) {
+    if (best_it == best_cost.end() ||
+        current_entry.g_cost != best_it->second.g_cost ||
+        current_entry.turn_count != best_it->second.turn_count) {
       continue;
     }
 
@@ -203,10 +295,13 @@ std::optional<std::vector<Point>> AStarPlanner::findPath(
       continue;
     }
 
-    for (const Point& move : moves) {
+    const std::array<MoveOption, 5> moves =
+        orderedMoves(current_entry.state, robot.goal);
+
+    for (const MoveOption& move : moves) {
       const Point next_position = {
-          current_entry.state.position.row + move.row,
-          current_entry.state.position.col + move.col,
+          current_entry.state.position.row + move.delta.row,
+          current_entry.state.position.col + move.delta.col,
       };
       const int next_time_step = current_entry.state.time_step + 1;
 
@@ -223,19 +318,35 @@ std::optional<std::vector<Point>> AStarPlanner::findPath(
         continue;
       }
 
-      const SearchState next_state = {next_position, next_time_step};
+      const SearchState next_state = {
+          next_position,
+          next_time_step,
+          move.direction,
+      };
       const int next_g_cost = current_entry.g_cost + 1;
+      const int next_turn_count = current_entry.turn_count +
+          (move.is_wait ? 0 : turnPenalty(current_entry.state.direction,
+                                          move.direction));
       const auto existing_it = best_cost.find(next_state);
-      if (existing_it != best_cost.end() && existing_it->second <= next_g_cost) {
-        continue;
+      if (existing_it != best_cost.end()) {
+        const SearchCost& existing_cost = existing_it->second;
+        if (existing_cost.g_cost < next_g_cost ||
+            (existing_cost.g_cost == next_g_cost &&
+             existing_cost.turn_count <= next_turn_count)) {
+          continue;
+        }
       }
 
-      best_cost[next_state] = next_g_cost;
+      best_cost[next_state] = {next_g_cost, next_turn_count};
       came_from[next_state] = current_entry.state;
 
       const int next_f_cost =
           next_g_cost + manhattanDistance(next_position, robot.goal);
-      frontier.push({next_state, next_g_cost, next_f_cost});
+      frontier.push({next_state,
+                     next_g_cost,
+                     next_f_cost,
+                     next_turn_count,
+                     next_insertion_order++});
       if (stats != nullptr) {
         ++stats->states_generated;
       }

@@ -1,6 +1,0 @@
-medium_32
-  Grid: 128x128 | Robots: 32 | Planner: greedy
-  Total cost: 5001 | Total time: 230 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 237.290 ms
-  Repair iterations: 11 | A* calls: 54 | Successful repairs: 11 | Failed repairs: 0 | Stagnant repairs: 0
-  States expanded: 260215 | States generated: 693014
-  Input SVG: benchmark_svgs/medium_32_input.svg | Solution SVG: benchmark_svgs/medium_32_solution.svg
