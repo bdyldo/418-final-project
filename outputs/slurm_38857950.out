@@ -1,0 +1,67 @@
+Building benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner  -fopenmp  -lstdc++fs
+=== medium_32 with N=1 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 17395.536 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=2 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 2
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 11392.109 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=4 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 4
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 9048.458 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=8 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 8
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 8527.314 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=16 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 16
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 8192.142 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=32 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 32
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 8555.464 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=64 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 64
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 8544.230 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+=== medium_32 with N=128 ===
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 128
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 8523.798 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+
+Combined results written to benchmark_results/medium_32_scaling_38857950.txt

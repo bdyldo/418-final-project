@@ -1,6 +1,0 @@
-abundant_64
-  Grid: 512x512 | Robots: 64 | Planner: greedy
-  Total cost: 40725 | Total time: 946 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 294716.722 ms
-  Repair iterations: 1210 | A* calls: 2484 | Successful repairs: 1210 | Failed repairs: 0 | Stagnant repairs: 1132
-  States expanded: 251959725 | States generated: 722806873
-  Input SVG: benchmark_svgs/abundant_64_input.svg | Solution SVG: benchmark_svgs/abundant_64_solution.svg

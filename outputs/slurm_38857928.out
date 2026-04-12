@@ -1,0 +1,63 @@
+Building sequential benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2 -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner_seq  -lstdc++fs
+Running sequential benchmark targets:
+  svg_few_8_seq
+  svg_few_16_seq
+  svg_medium_16_seq
+  svg_medium_32_seq
+  svg_abundant_64_seq
+  svg_abundant_128_seq
+
+=== make svg_few_8_seq ===
+mkdir -p benchmark_svgs_seq
+mkdir -p benchmark_results
+./benchmark_runner_seq few_8 benchmark_svgs_seq | tee benchmark_results/few_8_seq.txt
+few_8
+  Grid: 32x32 | Robots: 8 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 287 | Total time: 49 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 10.290 ms
+  Repair iterations: 1 | Conflicts considered: 1 | Candidate repairs: 2
+  A* calls: 10 | Successful repairs: 1 | Failed repairs: 0 | Stagnant repairs: 0
+  States expanded: 9793 | States generated: 27516
+  Input SVG: benchmark_svgs_seq/few_8_input.svg | Solution SVG: benchmark_svgs_seq/few_8_solution.svg
+
+=== make svg_few_16_seq ===
+mkdir -p benchmark_svgs_seq
+mkdir -p benchmark_results
+./benchmark_runner_seq few_16 benchmark_svgs_seq | tee benchmark_results/few_16_seq.txt
+few_16
+  Grid: 32x32 | Robots: 16 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 684 | Total time: 55 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 1028.838 ms
+  Repair iterations: 59 | Conflicts considered: 175 | Candidate repairs: 350
+  A* calls: 366 | Successful repairs: 59 | Failed repairs: 0 | Stagnant repairs: 41
+  States expanded: 1034824 | States generated: 2113081
+  Input SVG: benchmark_svgs_seq/few_16_input.svg | Solution SVG: benchmark_svgs_seq/few_16_solution.svg
+
+=== make svg_medium_16_seq ===
+mkdir -p benchmark_svgs_seq
+mkdir -p benchmark_results
+./benchmark_runner_seq medium_16 benchmark_svgs_seq | tee benchmark_results/medium_16_seq.txt
+medium_16
+  Grid: 128x128 | Robots: 16 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 2624 | Total time: 221 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 3867.740 ms
+  Repair iterations: 95 | Conflicts considered: 100 | Candidate repairs: 200
+  A* calls: 216 | Successful repairs: 95 | Failed repairs: 0 | Stagnant repairs: 89
+  States expanded: 3188676 | States generated: 10319596
+  Input SVG: benchmark_svgs_seq/medium_16_input.svg | Solution SVG: benchmark_svgs_seq/medium_16_solution.svg
+
+=== make svg_medium_32_seq ===
+mkdir -p benchmark_svgs_seq
+mkdir -p benchmark_results
+./benchmark_runner_seq medium_32 benchmark_svgs_seq | tee benchmark_results/medium_32_seq.txt
+medium_32
+  Grid: 128x128 | Robots: 32 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 16757.627 ms
+  Repair iterations: 90 | Conflicts considered: 129 | Candidate repairs: 258
+  A* calls: 290 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
+  States expanded: 12914198 | States generated: 21363899
+  Input SVG: benchmark_svgs_seq/medium_32_input.svg | Solution SVG: benchmark_svgs_seq/medium_32_solution.svg
+
+=== make svg_abundant_64_seq ===
+mkdir -p benchmark_svgs_seq
+mkdir -p benchmark_results
+./benchmark_runner_seq abundant_64 benchmark_svgs_seq | tee benchmark_results/abundant_64_seq.txt
+slurmstepd: error: *** JOB 38857928 ON r450 CANCELLED AT 2026-04-12T19:45:40 ***

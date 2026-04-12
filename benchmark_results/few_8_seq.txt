@@ -1,0 +1,7 @@
+few_8
+  Grid: 32x32 | Robots: 8 | Planner: greedy-topk | Top-K conflicts: 8 | Workers: 1
+  Total cost: 287 | Total time: 49 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 10.290 ms
+  Repair iterations: 1 | Conflicts considered: 1 | Candidate repairs: 2
+  A* calls: 10 | Successful repairs: 1 | Failed repairs: 0 | Stagnant repairs: 0
+  States expanded: 9793 | States generated: 27516
+  Input SVG: benchmark_svgs_seq/few_8_input.svg | Solution SVG: benchmark_svgs_seq/few_8_solution.svg
