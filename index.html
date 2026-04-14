@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>15-418 Final Project | MPMC Ring Buffer in Trading Pipeline</title>
+  <title>15-418 Final Project | Parallel Multi-Agent Path Planning</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -25,7 +25,7 @@
       </p>
       <ul>
         <li><a href="multi_agent_path_planning_proposal.html">Project Proposal</a></li>
-        <li><a href="#">Interim Milestone Report (coming soon)</a></li>
+        <li><a href="milestone_report.html">Interim Milestone Report</a></li>
         <li><a href="#">Final Report (coming soon)</a></li>
       </ul>
     </section>
@@ -35,11 +35,29 @@
       <p>
         We are going to study parallelization strategies for multi-agent path planning in a 
         simplified robotic manipulation setting, where multiple fingers of a robotic hand must 
-        move from start nodes to designated goal nodes without colliding. Our baseline will use 
-        Conflict-Based Search (CBS) with A* for single-agent replanning, and we will compare several 
-        parallel variants to understand how much of the algorithm can be accelerated and what bottlenecks 
-        limit scaling.
+        move from start nodes to designated goal nodes without colliding. Our original plan centered on
+        CBS, but our current implementation has shifted toward a greedy repair planner because exact CBS
+        was too expensive for the benchmark regime we want to study. We now have a working sequential
+        baseline, an OpenMP top-K parallel version, benchmark infrastructure, and SVG visualization for
+        comparing behavior and scalability.
       </p>
+    </section>
+
+    <section>
+      <h3>Current Status and Revised Schedule</h3>
+      <p>
+        Completed so far: benchmark generation, collision detection, space-time A*, greedy repair
+        baseline, OpenMP top-K repair evaluation, correctness tests, benchmark text output, and SVG
+        visualizations. The main change from the proposal is that we are no longer using traditional
+        CBS as the active baseline, because it was not practical on our target instances.
+      </p>
+      <ul>
+        <li><strong>Apr 14 - Apr 17:</strong> finalize milestone report and design batched multi-commit repair (Dylan, Jongsun)</li>
+        <li><strong>Apr 18 - Apr 21:</strong> implement disjoint-conflict batching and greedy subset commit (Dylan, Jongsun)</li>
+        <li><strong>Apr 22 - Apr 25:</strong> run PSC experiments and compare sequential vs parallel versions (Dylan, Jongsun)</li>
+        <li><strong>Apr 26 - Apr 29:</strong> generate poster figures, including SVG examples and speedup graphs (Dylan, Jongsun)</li>
+        <li><strong>Apr 30 - May 3:</strong> polish poster and final report narrative around correctness vs scalability (Dylan, Jongsun)</li>
+      </ul>
     </section>
   </main>
 </body>
