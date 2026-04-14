@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milestone Report | 15-418 Final Project</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      color: #222;
+      background: #fafafa;
+    }
+    .hero {
+      background: #1f2937;
+      color: white;
+      padding: 2.5rem 0;
+      margin-bottom: 2rem;
+    }
+    .container {
+      width: min(960px, 92%);
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4 {
+      margin-top: 0;
+    }
+    section {
+      background: white;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+    }
+    ul {
+      padding-left: 1.4rem;
+    }
+    a {
+      color: #2563eb;
+    }
+    .subtitle {
+      opacity: 0.92;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.75rem;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 0.6rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>Project Milestone Report</h1>
+      <h2>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</h2>
+      <p class="subtitle">
+        Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section>
+      <h3>TITLE</h3>
+      <p><strong>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</strong><br>
+      Dylan Sun (bdsun), Jongsun Park (jongsunp)</p>
+    </section>
+
+    <section>
+      <h3>URL</h3>
+      <p>
+        <a href="https://bdyldo.github.io/418-final-project/">
+          https://bdyldo.github.io/418-final-project/
+        </a>
+      </p>
+    </section>
+
+    <section>
+      <h3>SUMMARY OF PROGRESS</h3>
+      <p>
+        We now have a working end-to-end planning pipeline for our simplified MAPF setting. The current implementation includes a configurable benchmark generator, time-indexed collision detection with vertex and edge conflicts, a space-time A* low-level planner, SVG visualization for benchmark instances and solutions, correctness tests, and a benchmark harness that runs on both local machines and PSC. We also added metrics such as runtime, total cost, total time, repair iterations, A* calls, states expanded/generated, and simple path-quality indicators like wait time and detours for the final robot.
+      </p>
+      <p>
+        The biggest change from our original proposal is that we are no longer using traditional exact CBS as the active baseline. We implemented it, but it was not practical even on relatively modest instances: the high-level search tree grew too quickly and exact branching was too expensive to use as the foundation for our parallel study. In response, we replaced that baseline with a greedy repair planner that repeatedly detects conflicts, replans one robot at a time, and guarantees termination with a repair cap. This gives us a working sequential baseline that is fast enough to benchmark and parallelize.
+      </p>
+    </section>
+
+    <section>
+      <h3>WORK COMPLETED SO FAR</h3>
+      <ul>
+        <li>Implemented grid-based benchmark generation with fixed seeds and stored benchmark cases for <code>few</code>, <code>medium</code>, and <code>abundant</code> instances.</li>
+        <li>Implemented sequential A* in space-time with time-indexed vertex and edge constraints.</li>
+        <li>Implemented time-step collision detection for vertex conflicts and edge swaps.</li>
+        <li>Built a sequential greedy repair baseline that returns collision-free paths and records detailed planning statistics.</li>
+        <li>Built benchmark and visualization infrastructure:
+          input SVGs, solution SVGs, benchmark text output, and correctness tests.</li>
+        <li>Implemented a first OpenMP parallel version that evaluates repair tasks generated from the first <code>K</code> conflicts in parallel.</li>
+        <li>Created a separate sequential <code>_seq</code> benchmark path so we can compare PSC sequential and PSC parallel results fairly on the same machine.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>CHANGES FROM THE ORIGINAL PLAN</h3>
+      <p>
+        The main change is the algorithmic baseline. Our proposal centered around sequential CBS and then multiple parallel CBS variants. In practice, exact CBS was too expensive for the benchmark sizes we want to study. Even before parallelization, exact high-level branching was already overwhelming the search on cases such as <code>few_16</code>. That meant CBS was not giving us a useful platform for studying parallel speedup, because the sequential algorithm itself was not robust enough for the benchmark regime we care about.
+      </p>
+      <p>
+        Because of that, we shifted to a greedy repair formulation. This is a real change from the proposal, and it also changes the story of the project. Instead of parallelizing an exact optimal CBS implementation, we are now studying a more practical heuristic planner that still has clear conflict-resolution structure, but is less dominated by a global high-level search tree. We think this is a reasonable adjustment for a parallel systems project: it lets us focus on exposing and measuring useful concurrency instead of spending most of the project trying to stabilize a sequential exact solver.
+      </p>
+    </section>
+
+    <section>
+      <h3>PRELIMINARY RESULTS</h3>
+      <p>
+        We have preliminary sequential and parallel numbers on PSC for our current top-<code>K</code> greedy repair implementation. A few representative sequential runs are shown below.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Case</th>
+            <th>Workers</th>
+            <th>Runtime</th>
+            <th>Repair Iterations</th>
+            <th>A* Calls</th>
+            <th>States Expanded</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>few_8_seq</code></td>
+            <td>1</td>
+            <td>10.290 ms</td>
+            <td>1</td>
+            <td>10</td>
+            <td>9,793</td>
+          </tr>
+          <tr>
+            <td><code>medium_16_seq</code></td>
+            <td>1</td>
+            <td>3867.740 ms</td>
+            <td>95</td>
+            <td>216</td>
+            <td>3,188,676</td>
+          </tr>
+          <tr>
+            <td><code>medium_32_seq</code></td>
+            <td>1</td>
+            <td>16757.627 ms (local) / 17395.536 ms (PSC)</td>
+            <td>90</td>
+            <td>290</td>
+            <td>12,914,198</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        For PSC scaling on <code>medium_32</code>, we observed that runtime dropped from about <strong>17.4 s</strong> at 1 thread to about <strong>8.2 s</strong> at 16 threads, but then largely flattened: 32, 64, and 128 threads all stayed near <strong>8.5 s</strong>. This is only about a 2.1x speedup at 16 threads and does not scale well beyond that. The key observation is that the amount of algorithmic work is identical across thread counts: the same number of repair iterations, candidate repairs, A* calls, and states generated appear in every run. That suggests the current OpenMP version is not reducing work; it is only parallelizing a limited amount of speculative evaluation.
+      </p>
+    </section>
+
+    <section>
+      <h3>CURRENT OPENMP PARALLEL APPROACH</h3>
+      <p>
+        Our current OpenMP version detects all conflicts in the current global solution, sorts them by earliest timestep, takes the first <code>K</code> conflicts, and turns each conflict into two repair tasks: one task that constrains and replans the first robot, and one task that constrains and replans the second robot. These repair tasks are evaluated in parallel with OpenMP. After all tasks finish, the main thread compares the resulting candidate solutions and commits exactly one best candidate as the next global solution.
+      </p>
+      <p>
+        This approach does create parallel work, but it is also inherently wasteful. Threads can work on repair tasks involving the same robot, and after all that parallel A* work, only one candidate is committed. In other words, the algorithm still makes only one global step of progress per round, even if many threads found locally useful repairs. That is why the current top-<code>K</code> OpenMP version gives only modest speedup and then quickly saturates. The comparison and synchronization overhead are part of the problem, but the larger issue is algorithmic: the parallel version exposes more speculative work, not more committed progress.
+      </p>
+    </section>
+
+    <section>
+      <h3>WHY THE CURRENT PARALLEL VERSION IS NOT WORKING WELL</h3>
+      <ul>
+        <li>It evaluates many candidate repairs in parallel but commits only one candidate each round.</li>
+        <li>Different threads can still work on repairs involving the same robot, so the work is not as diverse as it looks.</li>
+        <li>The top-<code>K</code> parallel version is actually a more expensive algorithm than the earlier single-conflict greedy version, because it performs more low-level replanning even when run with 1 thread.</li>
+        <li>There is a synchronization barrier after each repair batch, so progress is still serialized at the end of every iteration.</li>
+        <li>The identical state counts across thread counts suggest we are not reducing search work, only overlapping some of it.</li>
+      </ul>
+      <p>
+        Our current conclusion is that this version is a useful stepping stone but not the final parallel algorithm we want to present.
+      </p>
+    </section>
+
+    <section>
+      <h3>REVISED PLAN: BATCHED MULTI-COMMIT REPAIR</h3>
+      <p>
+        The next direction we want to implement is batched multi-commit repair. Instead of taking the first <code>K</code> conflicts and eventually committing only one repair, we want to choose a set of conflicts that involve disjoint robots, replan those robots in parallel, and then try to commit multiple repaired paths in one round.
+      </p>
+      <p>
+        Our current idea is to use a <strong>greedy subset commit</strong> strategy. After a batch of repaired paths comes back, we would try to merge them into the current global solution one by one, keeping only the repaired paths that remain compatible with the already-accepted subset. This would let us keep multiple safe repairs from the same parallel round instead of discarding all but one. We expect this to make better use of high thread counts because more of the parallel work would turn into actual committed progress.
+      </p>
+    </section>
+
+    <section>
+      <h3>UPDATED GOALS FOR THE POSTER SESSION</h3>
+      <ul>
+        <li>Show the working sequential baseline and the OpenMP parallel top-<code>K</code> version.</li>
+        <li>Show sequential-vs-parallel timing and speedup graphs on PSC for at least <code>few</code> and <code>medium</code> cases.</li>
+        <li>If time permits, implement and compare the batched multi-commit repair version against the current single-commit top-<code>K</code> version.</li>
+        <li>Be explicit about the change from exact CBS to greedy repair and explain why that change was necessary.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>POSTER SESSION PLAN</h3>
+      <p>
+        For the poster session, we plan to show:
+      </p>
+      <ul>
+        <li>input and solution SVGs for representative <code>few</code>, <code>medium</code>, and possibly <code>abundant</code> cases,</li>
+        <li>speedup and scalability graphs from PSC runs,</li>
+        <li>a table or bar chart showing how many repair tasks were evaluated versus how many repairs were actually committed,</li>
+        <li>a diagram of the current top-<code>K</code> algorithm and the proposed batched multi-commit replacement, and</li>
+        <li>a short explanation of why the first OpenMP attempt plateaued and what architectural change we are making next.</li>
+      </ul>
+      <p>
+        If we have time, we would also like to show a small step-by-step visualization of one planning round: detect conflicts, generate repair tasks, run parallel replans, and then commit either one path or a safe subset of paths.
+      </p>
+    </section>
+
+    <section>
+      <h3>UPDATED SCHEDULE</h3>
+      <p>
+        We revised the remaining project schedule into short increments with named owners.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Dates</th>
+            <th>Task</th>
+            <th>Owner(s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Apr 14 - Apr 17</td>
+            <td>Finalize milestone report, clean PSC benchmark workflow, and design disjoint-conflict batching plus greedy subset commit.</td>
+            <td>Dylan, Jongsun</td>
+          </tr>
+          <tr>
+            <td>Apr 18 - Apr 21</td>
+            <td>Implement batched multi-commit repair. Dylan will handle conflict batching and OpenMP task structure; Jongsun will handle merge logic and subset-commit validation.</td>
+            <td>Dylan, Jongsun</td>
+          </tr>
+          <tr>
+            <td>Apr 22 - Apr 25</td>
+            <td>Expand correctness tests, compare sequential greedy, top-<code>K</code> sequential, and parallel versions, and run PSC experiments on <code>few</code> and <code>medium</code>.</td>
+            <td>Dylan, Jongsun</td>
+          </tr>
+          <tr>
+            <td>Apr 26 - Apr 29</td>
+            <td>Generate final SVGs and performance graphs, decide what to include from <code>abundant</code> runs, and prepare poster figures.</td>
+            <td>Dylan, Jongsun</td>
+          </tr>
+          <tr>
+            <td>Apr 30 - May 3</td>
+            <td>Polish poster, write final report sections, and finalize the presentation story around correctness vs scalability and why the algorithm changed.</td>
+            <td>Dylan, Jongsun</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h3>MAIN RISKS AND OPEN QUESTIONS</h3>
+      <ul>
+        <li>How should we choose a high-quality set of disjoint conflicts to resolve together in each round?</li>
+        <li>How aggressive can greedy subset commit be before it starts throwing away too much useful work or introducing too many new collisions?</li>
+        <li>Can batched multi-commit repair produce substantially better scaling than top-<code>K</code> single-commit repair, especially past 16 threads?</li>
+        <li>How much solution quality are we sacrificing by leaving exact CBS behind, and what is the right way to explain that tradeoff in the final report?</li>
+        <li>Do we need additional deterministic tie-breaking in A* so that runs on different machines produce more comparable path shapes?</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>CONCLUSION</h3>
+      <p>
+        We have a working planner, a benchmark harness, PSC results, and an initial OpenMP implementation. The main honest takeaway from the milestone is that our original exact CBS plan was not viable for the scale we want, and our first OpenMP design exposes work without exposing enough committed progress. The next phase of the project is therefore not just to “optimize” the current code, but to change the parallel algorithm so that many threads can produce many useful updates in the same round.
+      </p>
+    </section>
+
+  </main>
+</body>
+</html>
