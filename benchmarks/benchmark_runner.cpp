@@ -159,8 +159,8 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   std::cout << benchmark_case.name << "\n"
             << "  Grid: " << benchmark_case.rows << "x" << benchmark_case.cols
             << " | Robots: " << benchmark_case.robot_count
-            << " | Planner: greedy-topk"
-            << " | Top-K conflicts: " << planner.topKConflicts()
+            << " | Planner: greedy-batch"
+            << " | Top-K disjoint conflicts: " << planner.topKConflicts()
             << " | Workers: " << planner.maxWorkerCount() << "\n"
             << "  Total cost: " << totalPathCost(*solution)
             << " | Total time: " << totalTime(*solution)

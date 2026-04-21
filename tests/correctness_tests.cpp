@@ -172,6 +172,31 @@ void testGreedyRepairResolvesSimpleSwap() {
           "greedy_simple_swap: wrong robot 2 goal");
 }
 
+void testGreedyRepairBatchesDisjointConflicts() {
+  std::vector<Robot> robots = {
+      {1, {2, 0}, {1, 0}, {}},
+      {2, {1, 1}, {2, 2}, {}},
+      {3, {0, 2}, {1, 2}, {}},
+      {4, {0, 0}, {2, 1}, {}},
+  };
+
+  GreedyRepairPlanner planner(3, 3, 10000, 4);
+  GreedyRepairStats stats;
+  const auto solution = planner.findPaths(robots, &stats);
+
+  require(solution.has_value(), "greedy_batch: expected a solution");
+
+  CollisionDetector detector;
+  const std::vector<Collision> collisions =
+      detector.detectCollisions(*solution);
+  require(collisions.empty(),
+          "greedy_batch: solution still has collisions");
+  require(stats.repair_iterations == 1,
+          "greedy_batch: expected one batched repair round");
+  require(stats.successful_repairs == 2,
+          "greedy_batch: expected exactly two committed repairs");
+}
+
 void runTest(void (*test_fn)(), const std::string& test_name) {
   test_fn();
   std::cout << "[PASS] " << test_name << "\n";
@@ -191,6 +216,8 @@ int main() {
     runTest(testAStarRespectsVertexConstraint,
             "a_star_constraint");
     runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
+    runTest(testGreedyRepairBatchesDisjointConflicts,
+            "greedy_batch_disjoint_conflicts");
   } catch (const std::exception& error) {
     std::cerr << "[FAIL] " << error.what() << "\n";
     return 1;

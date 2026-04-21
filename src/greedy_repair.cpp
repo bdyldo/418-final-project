@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <stdexcept>
-#include <string>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
@@ -16,21 +15,32 @@
 namespace {
 
 struct RepairCandidate {
-  std::vector<Constraint> constraints;
-  std::vector<Robot> robots;
+  int conflict_index;
+  Constraint new_constraint;
+  Robot repaired_robot;
   int collision_count;
   int total_cost;
 };
 
 struct RepairTask {
+  int conflict_index;
   std::vector<Constraint> constraints;
   Constraint new_constraint;
 };
 
-bool betterCandidate(const RepairCandidate& lhs,
-                     const RepairCandidate& rhs) {
-  return std::tie(lhs.collision_count, lhs.total_cost) <
-      std::tie(rhs.collision_count, rhs.total_cost);
+bool betterMetrics(int lhs_collision_count,
+                   int lhs_total_cost,
+                   int rhs_collision_count,
+                   int rhs_total_cost) {
+  return std::tie(lhs_collision_count, lhs_total_cost) <
+      std::tie(rhs_collision_count, rhs_total_cost);
+}
+
+bool betterCandidate(const RepairCandidate& lhs, const RepairCandidate& rhs) {
+  return betterMetrics(lhs.collision_count,
+                       lhs.total_cost,
+                       rhs.collision_count,
+                       rhs.total_cost);
 }
 
 bool earlierCollision(const Collision& lhs, const Collision& rhs) {
@@ -64,54 +74,66 @@ bool earlierCollision(const Collision& lhs, const Collision& rhs) {
                rhs.to_b.col);
 }
 
-std::string constraintSignature(const std::vector<Constraint>& constraints) {
-  std::vector<Constraint> sorted_constraints = constraints;
-  std::sort(sorted_constraints.begin(),
-            sorted_constraints.end(),
-            [](const Constraint& lhs, const Constraint& rhs) {
-              return std::tie(lhs.robot_id,
-                              lhs.time_step,
-                              lhs.type,
-                              lhs.location.row,
-                              lhs.location.col,
-                              lhs.from.row,
-                              lhs.from.col,
-                              lhs.to.row,
-                              lhs.to.col) <
-                  std::tie(rhs.robot_id,
-                           rhs.time_step,
-                           rhs.type,
-                           rhs.location.row,
-                           rhs.location.col,
-                           rhs.from.row,
-                           rhs.from.col,
-                           rhs.to.row,
-                           rhs.to.col);
-            });
+bool sameConstraint(const Constraint& lhs, const Constraint& rhs) {
+  return std::tie(lhs.type,
+                  lhs.robot_id,
+                  lhs.time_step,
+                  lhs.location.row,
+                  lhs.location.col,
+                  lhs.from.row,
+                  lhs.from.col,
+                  lhs.to.row,
+                  lhs.to.col) ==
+      std::tie(rhs.type,
+               rhs.robot_id,
+               rhs.time_step,
+               rhs.location.row,
+               rhs.location.col,
+               rhs.from.row,
+               rhs.from.col,
+               rhs.to.row,
+               rhs.to.col);
+}
 
-  std::string signature;
-  signature.reserve(sorted_constraints.size() * 32);
-  for (const Constraint& constraint : sorted_constraints) {
-    signature += std::to_string(static_cast<int>(constraint.type));
-    signature += ':';
-    signature += std::to_string(constraint.robot_id);
-    signature += ':';
-    signature += std::to_string(constraint.time_step);
-    signature += ':';
-    signature += std::to_string(constraint.location.row);
-    signature += ',';
-    signature += std::to_string(constraint.location.col);
-    signature += ':';
-    signature += std::to_string(constraint.from.row);
-    signature += ',';
-    signature += std::to_string(constraint.from.col);
-    signature += ':';
-    signature += std::to_string(constraint.to.row);
-    signature += ',';
-    signature += std::to_string(constraint.to.col);
-    signature += ';';
+bool containsConstraint(const std::vector<Constraint>& constraints,
+                        const Constraint& candidate) {
+  return std::any_of(constraints.begin(),
+                     constraints.end(),
+                     [&](const Constraint& constraint) {
+                       return sameConstraint(constraint, candidate);
+                     });
+}
+
+std::vector<Collision> selectDisjointConflicts(
+    const std::vector<Collision>& collisions,
+    int limit) {
+  std::vector<Collision> selected;
+  std::unordered_set<int> used_robot_ids;
+
+  for (const Collision& collision : collisions) {
+    if (static_cast<int>(selected.size()) >= limit) {
+      break;
+    }
+    if (used_robot_ids.find(collision.robot_a) != used_robot_ids.end() ||
+        used_robot_ids.find(collision.robot_b) != used_robot_ids.end()) {
+      continue;
+    }
+
+    selected.push_back(collision);
+    used_robot_ids.insert(collision.robot_a);
+    used_robot_ids.insert(collision.robot_b);
   }
-  return signature;
+
+  return selected;
+}
+
+Robot* findRobotById(std::vector<Robot>& robots, int robot_id) {
+  for (Robot& robot : robots) {
+    if (robot.id == robot_id) {
+      return &robot;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace
@@ -137,7 +159,8 @@ GreedyRepairPlanner::GreedyRepairPlanner(int rows,
   }
 }
 
-// Greedily resolves collisions by repeatedly keeping the best single-robot replan from the first K conflicts.
+// Greedily resolves collisions by batching disjoint repairs and committing
+// every compatible improvement found in the round.
 std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
     const std::vector<Robot>& robots,
     GreedyRepairStats* stats) const {
@@ -147,8 +170,6 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
 
   std::vector<Constraint> constraints;
   std::vector<Robot> current_robots = robots;
-  std::unordered_set<std::string> seen_constraint_sets;
-  seen_constraint_sets.insert(constraintSignature(constraints));
   int repair_iterations = 0;
 
   for (Robot& robot : current_robots) {
@@ -186,28 +207,26 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
 
     const int current_collision_count =
         static_cast<int>(current_collisions.size());
-    const int conflict_limit = std::min(
-        top_k_conflicts_, static_cast<int>(current_collisions.size()));
+    const std::vector<Collision> selected_conflicts =
+        selectDisjointConflicts(current_collisions, top_k_conflicts_);
     if (stats != nullptr) {
-      stats->conflicts_considered += conflict_limit;
+      stats->conflicts_considered +=
+          static_cast<long long>(selected_conflicts.size());
     }
 
     std::vector<RepairTask> tasks;
-    tasks.reserve(static_cast<std::size_t>(conflict_limit) * 2);
+    tasks.reserve(selected_conflicts.size() * 2);
 
-    for (int i = 0; i < conflict_limit; ++i) {
+    for (int i = 0; i < static_cast<int>(selected_conflicts.size()); ++i) {
       for (const Constraint& new_constraint :
-           repairConstraints(current_collisions[i])) {
-        std::vector<Constraint> child_constraints = constraints;
-        child_constraints.push_back(new_constraint);
-
-        if (!seen_constraint_sets.insert(
-                constraintSignature(child_constraints)).second) {
+           repairConstraints(selected_conflicts[i])) {
+        if (containsConstraint(constraints, new_constraint)) {
           continue;
         }
 
-        tasks.push_back(
-            {std::move(child_constraints), new_constraint});
+        std::vector<Constraint> child_constraints = constraints;
+        child_constraints.push_back(new_constraint);
+        tasks.push_back({i, std::move(child_constraints), new_constraint});
       }
     }
 
@@ -235,7 +254,7 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
       AStarPlanner a_star(rows_, cols_);
       CollisionDetector collision_detector;
       AStarStats a_star_stats;
-      bool replanned = false;
+      std::optional<Robot> repaired_robot;
 
       for (Robot& robot : child_robots) {
         if (robot.id != task.new_constraint.robot_id) {
@@ -249,16 +268,15 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
         local_states_generated += a_star_stats.states_generated;
         if (!path.has_value()) {
           ++local_failed_repairs;
-          replanned = false;
           break;
         }
 
         robot.path = *path;
-        replanned = true;
+        repaired_robot = robot;
         break;
       }
 
-      if (!replanned) {
+      if (!repaired_robot.has_value()) {
         continue;
       }
 
@@ -267,8 +285,9 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
       const int child_total_cost = totalCost(child_robots);
 
       candidates[task_index] = RepairCandidate{
-          task.constraints,
-          std::move(child_robots),
+          task.conflict_index,
+          task.new_constraint,
+          *repaired_robot,
           child_collision_count,
           child_total_cost,
       };
@@ -282,6 +301,8 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
     }
 
     std::optional<RepairCandidate> best_candidate;
+    std::vector<std::optional<RepairCandidate>> best_candidates_by_conflict(
+        selected_conflicts.size());
     for (std::optional<RepairCandidate>& candidate : candidates) {
       if (!candidate.has_value()) {
         continue;
@@ -289,16 +310,95 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
 
       if (!best_candidate.has_value() ||
           betterCandidate(*candidate, *best_candidate)) {
-        best_candidate = std::move(candidate);
+        best_candidate = candidate;
       }
+
+      std::optional<RepairCandidate>& conflict_best =
+          best_candidates_by_conflict[candidate->conflict_index];
+      if (!conflict_best.has_value() ||
+          betterCandidate(*candidate, *conflict_best)) {
+        conflict_best = candidate;
+      }
+    }
+
+    std::vector<RepairCandidate> batch_candidates;
+    batch_candidates.reserve(best_candidates_by_conflict.size());
+    for (const std::optional<RepairCandidate>& candidate :
+         best_candidates_by_conflict) {
+      if (candidate.has_value()) {
+        batch_candidates.push_back(*candidate);
+      }
+    }
+    std::sort(batch_candidates.begin(),
+              batch_candidates.end(),
+              betterCandidate);
+
+    std::vector<Constraint> merged_constraints = constraints;
+    std::vector<Robot> merged_robots = current_robots;
+    int merged_collision_count = current_collision_count;
+    int merged_total_cost = totalCost(current_robots);
+    long long merged_successful_repairs = 0;
+    long long merged_stagnant_repairs = 0;
+
+    for (const RepairCandidate& candidate : batch_candidates) {
+      if (containsConstraint(merged_constraints, candidate.new_constraint)) {
+        continue;
+      }
+
+      std::vector<Constraint> trial_constraints = merged_constraints;
+      trial_constraints.push_back(candidate.new_constraint);
+
+      std::vector<Robot> trial_robots = merged_robots;
+      Robot* repaired_robot =
+          findRobotById(trial_robots, candidate.repaired_robot.id);
+      if (repaired_robot == nullptr) {
+        throw std::runtime_error("repair candidate referenced an unknown robot");
+      }
+      *repaired_robot = candidate.repaired_robot;
+
+      const int previous_collision_count = merged_collision_count;
+      const int trial_collision_count = static_cast<int>(
+          collision_detector_.detectCollisions(trial_robots).size());
+      const int trial_total_cost = totalCost(trial_robots);
+
+      if (!betterMetrics(trial_collision_count,
+                         trial_total_cost,
+                         merged_collision_count,
+                         merged_total_cost)) {
+        continue;
+      }
+
+      if (trial_collision_count >= previous_collision_count) {
+        ++merged_stagnant_repairs;
+      }
+      ++merged_successful_repairs;
+      merged_constraints = std::move(trial_constraints);
+      merged_robots = std::move(trial_robots);
+      merged_collision_count = trial_collision_count;
+      merged_total_cost = trial_total_cost;
+    }
+
+    if (merged_successful_repairs > 0) {
+      constraints = std::move(merged_constraints);
+      current_robots = std::move(merged_robots);
+      if (stats != nullptr) {
+        stats->successful_repairs += merged_successful_repairs;
+        stats->stagnant_repairs += merged_stagnant_repairs;
+      }
+      continue;
     }
 
     if (!best_candidate.has_value()) {
       return std::nullopt;
     }
 
-    constraints = std::move(best_candidate->constraints);
-    current_robots = std::move(best_candidate->robots);
+    constraints.push_back(best_candidate->new_constraint);
+    Robot* repaired_robot =
+        findRobotById(current_robots, best_candidate->repaired_robot.id);
+    if (repaired_robot == nullptr) {
+      throw std::runtime_error("best repair candidate referenced an unknown robot");
+    }
+    *repaired_robot = best_candidate->repaired_robot;
     if (stats != nullptr) {
       ++stats->successful_repairs;
       if (best_candidate->collision_count >= current_collision_count) {
@@ -308,7 +408,7 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
   }
 }
 
-// Returns the number of earliest conflicts evaluated per greedy repair round.
+// Returns the maximum number of earliest disjoint conflicts evaluated per round.
 int GreedyRepairPlanner::topKConflicts() const {
   return top_k_conflicts_;
 }
