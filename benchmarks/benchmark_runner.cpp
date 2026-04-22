@@ -188,7 +188,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
 
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
-            << " <few|medium|abundant|few_8|few_16|medium_16|medium_32|abundant_64|abundant_128>"
+            << " <few|medium|abundant|few_8|few_16|few_32|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
             << " [svg_output_dir] [-N threads]\n";
   std::cerr << "Benchmark case store: " << benchmarkCaseStorePath() << "\n";
 }

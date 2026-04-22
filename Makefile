@@ -39,14 +39,14 @@ BENCHMARK_RESULTS_DIR := benchmark_results
 THREAD_ARGS := $(if $(N),-N $(N),)
 
 .PHONY: all clean run test test_correctness test_few test_medium test_abundant \
-	test_few_8 test_few_16 test_medium_16 test_medium_32 test_abundant_64 test_abundant_128 \
-	svg_few svg_medium svg_abundant svg_few_8 svg_few_16 svg_medium_16 svg_medium_32 \
+	test_few_8 test_few_16 test_few_32 test_medium_16 test_medium_32 test_medium_64 test_abundant_64 test_abundant_128 \
+	svg_few svg_medium svg_abundant svg_few_8 svg_few_16 svg_few_32 svg_medium_16 svg_medium_32 svg_medium_64 \
 	svg_abundant_64 svg_abundant_128 \
 	test_few_seq test_medium_seq test_abundant_seq \
-	test_few_8_seq test_few_16_seq test_medium_16_seq test_medium_32_seq \
+	test_few_8_seq test_few_16_seq test_few_32_seq test_medium_16_seq test_medium_32_seq test_medium_64_seq \
 	test_abundant_64_seq test_abundant_128_seq \
 	svg_few_seq svg_medium_seq svg_abundant_seq \
-	svg_few_8_seq svg_few_16_seq svg_medium_16_seq svg_medium_32_seq \
+	svg_few_8_seq svg_few_16_seq svg_few_32_seq svg_medium_16_seq svg_medium_32_seq svg_medium_64_seq \
 	svg_abundant_64_seq svg_abundant_128_seq \
 	benchmark_case_tool
 
@@ -87,6 +87,10 @@ test_few_16: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET) few_16 $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/few_16.txt
 
+test_few_32: $(BENCHMARK_TARGET)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET) few_32 $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/few_32.txt
+
 test_medium: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET) medium $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/medium.txt
@@ -98,6 +102,10 @@ test_medium_16: $(BENCHMARK_TARGET)
 test_medium_32: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET) medium_32 $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/medium_32.txt
+
+test_medium_64: $(BENCHMARK_TARGET)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET) medium_64 $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/medium_64.txt
 
 test_abundant: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
@@ -126,6 +134,11 @@ svg_few_16: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET) few_16 $(BENCHMARK_SVG_DIR) $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/few_16.txt
 
+svg_few_32: $(BENCHMARK_TARGET)
+	mkdir -p $(BENCHMARK_SVG_DIR)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET) few_32 $(BENCHMARK_SVG_DIR) $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/few_32.txt
+
 svg_medium: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_SVG_DIR)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
@@ -140,6 +153,11 @@ svg_medium_32: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_SVG_DIR)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET) medium_32 $(BENCHMARK_SVG_DIR) $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/medium_32.txt
+
+svg_medium_64: $(BENCHMARK_TARGET)
+	mkdir -p $(BENCHMARK_SVG_DIR)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET) medium_64 $(BENCHMARK_SVG_DIR) $(THREAD_ARGS) | tee $(BENCHMARK_RESULTS_DIR)/medium_64.txt
 
 svg_abundant: $(BENCHMARK_TARGET)
 	mkdir -p $(BENCHMARK_SVG_DIR)
@@ -168,6 +186,10 @@ test_few_16_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) few_16 | tee $(BENCHMARK_RESULTS_DIR)/few_16_seq.txt
 
+test_few_32_seq: $(BENCHMARK_TARGET_SEQ)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET_SEQ) few_32 | tee $(BENCHMARK_RESULTS_DIR)/few_32_seq.txt
+
 test_medium_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) medium | tee $(BENCHMARK_RESULTS_DIR)/medium_seq.txt
@@ -179,6 +201,10 @@ test_medium_16_seq: $(BENCHMARK_TARGET_SEQ)
 test_medium_32_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) medium_32 | tee $(BENCHMARK_RESULTS_DIR)/medium_32_seq.txt
+
+test_medium_64_seq: $(BENCHMARK_TARGET_SEQ)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET_SEQ) medium_64 | tee $(BENCHMARK_RESULTS_DIR)/medium_64_seq.txt
 
 test_abundant_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
@@ -207,6 +233,11 @@ svg_few_16_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) few_16 $(BENCHMARK_SVG_DIR_SEQ) | tee $(BENCHMARK_RESULTS_DIR)/few_16_seq.txt
 
+svg_few_32_seq: $(BENCHMARK_TARGET_SEQ)
+	mkdir -p $(BENCHMARK_SVG_DIR_SEQ)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET_SEQ) few_32 $(BENCHMARK_SVG_DIR_SEQ) | tee $(BENCHMARK_RESULTS_DIR)/few_32_seq.txt
+
 svg_medium_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_SVG_DIR_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
@@ -221,6 +252,11 @@ svg_medium_32_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_SVG_DIR_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) medium_32 $(BENCHMARK_SVG_DIR_SEQ) | tee $(BENCHMARK_RESULTS_DIR)/medium_32_seq.txt
+
+svg_medium_64_seq: $(BENCHMARK_TARGET_SEQ)
+	mkdir -p $(BENCHMARK_SVG_DIR_SEQ)
+	mkdir -p $(BENCHMARK_RESULTS_DIR)
+	./$(BENCHMARK_TARGET_SEQ) medium_64 $(BENCHMARK_SVG_DIR_SEQ) | tee $(BENCHMARK_RESULTS_DIR)/medium_64_seq.txt
 
 svg_abundant_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_SVG_DIR_SEQ)

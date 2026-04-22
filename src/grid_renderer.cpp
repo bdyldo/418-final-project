@@ -39,7 +39,9 @@ GridRenderer::GridRenderer(int rows, int cols, const std::vector<Robot>& robots)
 
 // Stores a reference to the planner data that will be rendered.
 GridRenderer::GridRenderer(const GridPlanner& planner)
-    : rows_(planner.rows()), cols_(planner.cols()), robots_(planner.robots()) {}
+    : rows_(planner.rows()),
+      cols_(planner.cols()),
+      robots_(planner.robots()) {}
 
 // Prints the grid dimensions and start/goal for each robot.
 void GridRenderer::printRobotSummary(std::ostream& out) const {
