@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
     renderer.printRobotSummary(std::cout);
     std::cout << "\nStrategy: " << strategyName(strategy) << "\n";
     if (strategy == Strategy::Greedy) {
-      std::cout << "Top-K disjoint conflicts: " << greedy_top_k_conflicts
+      std::cout << "Async conflict window: " << greedy_top_k_conflicts
                 << " | Workers: " << greedy_workers << "\n";
     }
     std::cout << "Planning time: " << std::fixed << std::setprecision(3)

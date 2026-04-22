@@ -42,9 +42,6 @@ class GreedyRepairPlanner {
   int top_k_conflicts_;
   AStarPlanner a_star_;
   CollisionDetector collision_detector_;
-
-  int totalCost(const std::vector<Robot>& robots) const;
-  std::vector<Constraint> repairConstraints(const Collision& collision) const;
 };
 
 #endif

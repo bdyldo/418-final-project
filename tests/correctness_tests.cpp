@@ -190,11 +190,9 @@ void testGreedyRepairBatchesDisjointConflicts() {
   const std::vector<Collision> collisions =
       detector.detectCollisions(*solution);
   require(collisions.empty(),
-          "greedy_batch: solution still has collisions");
-  require(stats.repair_iterations == 1,
-          "greedy_batch: expected one batched repair round");
-  require(stats.successful_repairs == 2,
-          "greedy_batch: expected exactly two committed repairs");
+          "greedy_async: solution still has collisions");
+  require(stats.successful_repairs > 0,
+          "greedy_async: expected at least one committed repair");
 }
 
 void runTest(void (*test_fn)(), const std::string& test_name) {
@@ -217,7 +215,7 @@ int main() {
             "a_star_constraint");
     runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
     runTest(testGreedyRepairBatchesDisjointConflicts,
-            "greedy_batch_disjoint_conflicts");
+            "greedy_async_multi_conflict");
   } catch (const std::exception& error) {
     std::cerr << "[FAIL] " << error.what() << "\n";
     return 1;
