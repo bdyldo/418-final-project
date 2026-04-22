@@ -1,0 +1,4 @@
+Building benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner  -fopenmp  -lstdc++fs
+=== medium_32 with N=1 ===
+benchmark error: medium_32: greedy repair failed to find a solution

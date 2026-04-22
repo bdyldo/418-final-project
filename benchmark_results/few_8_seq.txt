@@ -1,6 +1,0 @@
-few_8
-  Grid: 32x32 | Robots: 8 | Planner: greedy-async | Async conflict window: 8 | Workers: 1
-  Total cost: 286 | Total time: 43 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 7.233 ms
-  Repair iterations: 2 | Conflicts considered: 4 | Candidate repairs: 7
-  A* calls: 15 | Successful repairs: 3 | Failed repairs: 0 | Stagnant repairs: 1
-  States expanded: 11113 | States generated: 31922
