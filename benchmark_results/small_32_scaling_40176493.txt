@@ -1,0 +1,70 @@
+small_32 scaling run
+job_id=40176493
+host=r009.ib.bridges2.psc.edu
+cpus_per_task=128
+thread_counts=1 2 4 8 16 32 64 128
+
+=== small_32 with N=1 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 1
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 156346.908 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=2 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 2
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 88871.642 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=4 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 4
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 53814.295 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=8 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 8
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 38351.059 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=16 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 16
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 33336.595 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=32 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 32
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 33572.528 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=64 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 64
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 33994.611 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+
+=== small_32 with N=128 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 128
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 34578.693 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+

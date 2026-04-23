@@ -29,10 +29,12 @@ TEST_TARGET := correctness_tests
 TEST_SRCS := tests/correctness_tests.cpp src/grid_planner.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
 BENCHMARK_TARGET := benchmark_runner
 BENCHMARK_TARGET_SEQ := benchmark_runner_seq
-BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
+BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp src/solution_snapshot.cpp
 BENCHMARK_SRCS := benchmarks/benchmark_runner.cpp $(BENCHMARK_COMMON_SRCS)
 BENCHMARK_CASE_TOOL_TARGET := benchmark_case_tool
 BENCHMARK_CASE_TOOL_SRCS := benchmarks/benchmark_case_tool.cpp src/benchmark_cases.cpp
+ANIMATION_TARGET := benchmark_animation_tool
+ANIMATION_SRCS := benchmarks/benchmark_animation_tool.cpp $(BENCHMARK_COMMON_SRCS)
 BENCHMARK_SVG_DIR := benchmark_svgs
 BENCHMARK_SVG_DIR_SEQ := benchmark_svgs_seq
 BENCHMARK_RESULTS_DIR := benchmark_results
@@ -48,7 +50,7 @@ THREAD_ARGS := $(if $(N),-N $(N),)
 	svg_few_seq svg_medium_seq svg_abundant_seq \
 	svg_few_8_seq svg_few_16_seq svg_few_32_seq svg_medium_16_seq svg_medium_32_seq svg_medium_64_seq \
 	svg_abundant_64_seq svg_abundant_128_seq \
-	benchmark_case_tool
+	animate_small_32
 
 all: $(TARGET)
 
@@ -66,6 +68,9 @@ $(BENCHMARK_TARGET_SEQ): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planne
 
 $(BENCHMARK_CASE_TOOL_TARGET): $(BENCHMARK_CASE_TOOL_SRCS) src/benchmark_cases.h src/grid_planner.h
 	$(CXX) $(CXXFLAGS) -I src $(BENCHMARK_CASE_TOOL_SRCS) -o $(BENCHMARK_CASE_TOOL_TARGET) $(LDFLAGS)
+
+$(ANIMATION_TARGET): $(ANIMATION_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h src/solution_snapshot.h
+	$(CXX) $(CXXFLAGS) -I src $(ANIMATION_SRCS) -o $(ANIMATION_TARGET) $(LDFLAGS)
 
 run: $(TARGET)
 	./$(TARGET)
@@ -273,6 +278,10 @@ svg_abundant_128_seq: $(BENCHMARK_TARGET_SEQ)
 	mkdir -p $(BENCHMARK_RESULTS_DIR)
 	./$(BENCHMARK_TARGET_SEQ) abundant_128 $(BENCHMARK_SVG_DIR_SEQ) | tee $(BENCHMARK_RESULTS_DIR)/abundant_128_seq.txt
 
+animate_small_32: $(ANIMATION_TARGET)
+	mkdir -p $(BENCHMARK_SVG_DIR)/small_32
+	./$(ANIMATION_TARGET) small_32 $(BENCHMARK_SVG_DIR)/small_32/small_32_animation.svg $(THREAD_ARGS)
+
 clean:
-	rm -f $(TARGET) $(TEST_TARGET) $(BENCHMARK_TARGET) $(BENCHMARK_TARGET_SEQ) $(BENCHMARK_CASE_TOOL_TARGET)
-	rm -rf $(BENCHMARK_SVG_DIR) $(BENCHMARK_SVG_DIR_SEQ) $(BENCHMARK_RESULTS_DIR)
+	rm -f $(TARGET) $(TEST_TARGET) $(BENCHMARK_TARGET) $(BENCHMARK_TARGET_SEQ) $(BENCHMARK_CASE_TOOL_TARGET) $(ANIMATION_TARGET)
+	rm -rf $(BENCHMARK_SVG_DIR) $(BENCHMARK_SVG_DIR_SEQ) $(BENCHMARK_RESULTS_DIR) benchmark_solutions

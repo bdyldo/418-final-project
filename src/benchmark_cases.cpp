@@ -19,6 +19,7 @@ std::vector<BenchmarkCaseDefinition> defaultBenchmarkCaseDefinitions() {
       {"few_8", 32, 32, 8, 1008},
       {"few_16", 32, 32, 16, 1016},
       {"few_32", 32, 32, 32, 1032},
+      {"small_32", 10, 30, 32, 4032},
       {"medium_16", 128, 128, 16, 2016},
       {"medium_32", 128, 128, 32, 2032},
       {"medium_64", 128, 128, 64, 2064},
@@ -222,7 +223,8 @@ BenchmarkCaseDefinition findDefinitionByName(
   throw std::invalid_argument(
       "benchmark target must be one of "
       "'few', 'medium', 'abundant', "
-      "'few_8', 'few_16', 'few_32', 'medium_16', 'medium_32', 'medium_64', "
+      "'few_8', 'few_16', 'few_32', 'small_32', "
+      "'medium_16', 'medium_32', 'medium_64', "
       "'abundant_64', or 'abundant_128'");
 }
 

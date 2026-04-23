@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <stdexcept>
 #include <vector>
@@ -11,6 +12,7 @@ namespace {
 
 constexpr int kCellSize = 28;
 constexpr int kMargin = 28;
+constexpr int kRobotRadius = 7;
 
 const std::array<const char*, 12> kRobotColors = {
     "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#0891b2", "#9333ea",
@@ -157,9 +159,118 @@ void GridRenderer::writeSvg(const std::string& path) const {
   svg << "</svg>\n";
 }
 
+// Writes an animated SVG that shows the robot positions at each timestep.
+void GridRenderer::writeAnimatedSvg(const std::string& path,
+                                    double seconds_per_step) const {
+  if (seconds_per_step <= 0.0) {
+    throw std::invalid_argument("animation seconds per step must be positive");
+  }
+
+  std::ofstream svg(path);
+  if (!svg) {
+    throw std::runtime_error("could not open animated SVG output file: " + path);
+  }
+
+  const int width = cols_ * kCellSize + 2 * kMargin;
+  const int height = rows_ * kCellSize + 2 * kMargin + 48;
+  const int time_steps = std::max(1, maxTimeSteps());
+  const double duration_seconds = time_steps * seconds_per_step;
+
+  svg << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" << width
+      << "\" height=\"" << height << "\" viewBox=\"0 0 " << width << " "
+      << height << "\">\n";
+  svg << "  <rect width=\"100%\" height=\"100%\" fill=\"#f8fafc\"/>\n";
+  svg << "  <text x=\"" << kMargin << "\" y=\"20\" font-size=\"14\" "
+      << "font-family=\"Arial\" font-weight=\"700\" fill=\"#0f172a\">"
+      << "Robot animation: " << time_steps << " time step(s), "
+      << std::fixed << std::setprecision(2) << seconds_per_step
+      << "s per step</text>\n";
+
+  for (int row = 0; row <= rows_; ++row) {
+    const int y = kMargin + row * kCellSize + 20;
+    svg << "  <line x1=\"" << kMargin << "\" y1=\"" << y << "\" x2=\""
+        << kMargin + cols_ * kCellSize << "\" y2=\"" << y
+        << "\" stroke=\"#cbd5e1\" stroke-width=\"1\"/>\n";
+  }
+
+  for (int col = 0; col <= cols_; ++col) {
+    const int x = kMargin + col * kCellSize;
+    svg << "  <line x1=\"" << x << "\" y1=\"" << kMargin + 20 << "\" x2=\"" << x
+        << "\" y2=\"" << kMargin + rows_ * kCellSize + 20
+        << "\" stroke=\"#cbd5e1\" stroke-width=\"1\"/>\n";
+  }
+
+  for (const Robot& robot : robots_) {
+    const char* color = robotColor(robot.id);
+    const int start_x = cellCenterX(robot.start.col);
+    const int start_y = cellCenterY(robot.start.row) + 20;
+    const int goal_x = cellCenterX(robot.goal.col);
+    const int goal_y = cellCenterY(robot.goal.row) + 20;
+
+    svg << "  <rect x=\"" << goal_x - 8 << "\" y=\"" << goal_y - 8
+        << "\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"" << color
+        << "\" stroke-width=\"2\" opacity=\"0.75\"/>\n";
+    svg << "  <circle cx=\"" << start_x << "\" cy=\"" << start_y
+        << "\" r=\"" << kRobotRadius << "\" fill=\"" << color
+        << "\" stroke=\"#0f172a\" stroke-width=\"1.2\">\n";
+
+    std::ostringstream x_values;
+    std::ostringstream y_values;
+    std::ostringstream key_times;
+    x_values << std::fixed << std::setprecision(1);
+    y_values << std::fixed << std::setprecision(1);
+    key_times << std::fixed << std::setprecision(6);
+
+    for (int time_step = 0; time_step < time_steps; ++time_step) {
+      const Point point = robotPositionAtTime(robot, time_step);
+      if (time_step > 0) {
+        x_values << ";";
+        y_values << ";";
+        key_times << ";";
+      }
+      x_values << cellCenterX(point.col);
+      y_values << cellCenterY(point.row) + 20;
+      key_times << static_cast<double>(time_step) / time_steps;
+    }
+    x_values << ";" << cellCenterX(robotPositionAtTime(robot, 0).col);
+    y_values << ";" << cellCenterY(robotPositionAtTime(robot, 0).row) + 20;
+    key_times << ";1";
+
+    svg << "    <animate attributeName=\"cx\" dur=\"" << duration_seconds
+        << "s\" repeatCount=\"indefinite\" calcMode=\"linear\" values=\""
+        << x_values.str() << "\" keyTimes=\"" << key_times.str()
+        << "\"/>\n";
+    svg << "    <animate attributeName=\"cy\" dur=\"" << duration_seconds
+        << "s\" repeatCount=\"indefinite\" calcMode=\"linear\" values=\""
+        << y_values.str() << "\" keyTimes=\"" << key_times.str()
+        << "\"/>\n";
+    svg << "  </circle>\n";
+  }
+
+  svg << "</svg>\n";
+}
+
 // Formats a robot id for terminal grid output.
 std::string GridRenderer::robotLabel(int id) const {
   return "R" + std::to_string(id);
+}
+
+int GridRenderer::maxTimeSteps() const {
+  int max_time_steps = 0;
+  for (const Robot& robot : robots_) {
+    max_time_steps = std::max(max_time_steps, static_cast<int>(robot.path.size()));
+  }
+  return max_time_steps;
+}
+
+Point GridRenderer::robotPositionAtTime(const Robot& robot, int time_step) const {
+  if (robot.path.empty()) {
+    return robot.start;
+  }
+  if (time_step < static_cast<int>(robot.path.size())) {
+    return robot.path[time_step];
+  }
+  return robot.path.back();
 }
 
 // Prints the grid state for one timestep.
@@ -168,9 +279,7 @@ void GridRenderer::printGridAtTime(std::ostream& out, int time_step) const {
       rows_, std::vector<std::string>(cols_, "."));
 
   for (const Robot& robot : robots_) {
-    const Point& point = time_step < static_cast<int>(robot.path.size())
-        ? robot.path[time_step]
-        : robot.path.back();
+    const Point point = robotPositionAtTime(robot, time_step);
     grid[point.row][point.col] = robotLabel(robot.id);
   }
 

@@ -26,7 +26,7 @@ class GreedyRepairPlanner {
   GreedyRepairPlanner(int rows,
                       int cols,
                       int max_repairs = 10000,
-                      int top_k_conflicts = 8);
+                      int top_k_conflicts = 32);
 
   std::optional<std::vector<Robot>> findPaths(
       const std::vector<Robot>& robots,

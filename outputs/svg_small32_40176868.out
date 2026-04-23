@@ -1,0 +1,7 @@
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 32 | Workers: 16
+  Total cost: 1109 | Total time: 39 | Final robot wait time: 3 | Final robot detours: 0 | Runtime: 33729.105 ms
+  Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
+  A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
+  States expanded: 158852792 | States generated: 248070127
+  Input SVG: benchmark_svgs/small_32/small_32_input.svg | Solution SVG: benchmark_svgs/small_32/small_32_solution.svg

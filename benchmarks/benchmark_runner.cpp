@@ -2,6 +2,7 @@
 #include "collision_detector.h"
 #include "greedy_repair.h"
 #include "grid_renderer.h"
+#include "solution_snapshot.h"
 
 #include <algorithm>
 #include <chrono>
@@ -140,12 +141,27 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   const auto elapsed_ms = std::chrono::duration<double, std::milli>(
       end_time - start_time);
 
+  const std::string solution_snapshot_output =
+      defaultSolutionSnapshotPath(benchmark_case.name);
+  std::filesystem::create_directories(
+      std::filesystem::path(solution_snapshot_output).parent_path());
+  writeSolutionSnapshot(
+      StoredSolution{
+          benchmark_case.name,
+          benchmark_case.rows,
+          benchmark_case.cols,
+          *solution,
+      },
+      solution_snapshot_output);
+
   std::string input_svg_output;
   std::string solution_svg_output;
+  std::string animation_svg_output;
   if (svg_dir.has_value()) {
     std::filesystem::create_directories(*svg_dir);
     input_svg_output = *svg_dir + "/" + benchmark_case.name + "_input.svg";
     solution_svg_output = *svg_dir + "/" + benchmark_case.name + "_solution.svg";
+    animation_svg_output = *svg_dir + "/" + benchmark_case.name + "_animation.svg";
 
     GridRenderer input_renderer(
         benchmark_case.rows, benchmark_case.cols, benchmark_case.robots);
@@ -154,6 +170,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
     GridRenderer solution_renderer(
         benchmark_case.rows, benchmark_case.cols, *solution);
     solution_renderer.writeSvg(solution_svg_output);
+    solution_renderer.writeAnimatedSvg(animation_svg_output);
   }
 
   std::cout << benchmark_case.name << "\n"
@@ -181,14 +198,17 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   if (!input_svg_output.empty()) {
     std::cout << "\n"
               << "  Input SVG: " << input_svg_output
-              << " | Solution SVG: " << solution_svg_output;
+              << " | Solution SVG: " << solution_svg_output
+              << " | Animation SVG: " << animation_svg_output;
   }
+  std::cout << "\n"
+            << "  Solution snapshot: " << solution_snapshot_output;
   std::cout << "\n";
 }
 
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
-            << " <few|medium|abundant|few_8|few_16|few_32|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
+            << " <few|medium|abundant|few_8|few_16|few_32|small_32|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
             << " [svg_output_dir] [-N threads]\n";
   std::cerr << "Benchmark case store: " << benchmarkCaseStorePath() << "\n";
 }

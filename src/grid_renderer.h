@@ -15,6 +15,8 @@ class GridRenderer {
   void printPathOverlay(std::ostream& out) const;
   void printTimeSteps(std::ostream& out) const;
   void writeSvg(const std::string& path) const;
+  void writeAnimatedSvg(const std::string& path,
+                        double seconds_per_step = 0.55) const;
 
  private:
   int rows_;
@@ -22,6 +24,8 @@ class GridRenderer {
   const std::vector<Robot>& robots_;
 
   std::string robotLabel(int id) const;
+  int maxTimeSteps() const;
+  Point robotPositionAtTime(const Robot& robot, int time_step) const;
   void printGridAtTime(std::ostream& out, int time_step) const;
 };
 
