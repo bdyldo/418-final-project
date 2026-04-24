@@ -66,6 +66,19 @@ StoredSolution solveCase(const std::string& case_name) {
   };
 }
 
+void requireCollisionFree(const StoredSolution& stored_solution,
+                          const std::string& source_label) {
+  CollisionDetector collision_detector;
+  const std::vector<Collision> collisions =
+      collision_detector.detectCollisions(stored_solution.robots);
+  if (!collisions.empty()) {
+    throw std::runtime_error(
+        source_label + " contains " +
+        std::to_string(collisions.size()) +
+        " collision(s); rerun the case with a collision-free planner");
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -116,9 +129,11 @@ int main(int argc, char** argv) {
 
     if (!force_resolve && std::filesystem::exists(snapshot_path)) {
       stored_solution = readSolutionSnapshot(snapshot_path);
+      requireCollisionFree(stored_solution, snapshot_path);
       std::cout << "Loaded saved solution snapshot: " << snapshot_path << "\n";
     } else {
       stored_solution = solveCase(*case_name);
+      requireCollisionFree(stored_solution, *case_name);
       std::filesystem::create_directories(
           std::filesystem::path(snapshot_path).parent_path());
       writeSolutionSnapshot(stored_solution, snapshot_path);

@@ -1,0 +1,43 @@
+small_32 bitset scaling run
+planner=bitset-wavefront-mapf
+host=br014.ib.bridges2.psc.edu
+date=2026-04-24T08:39:16-04:00
+thread_counts=1 2 4 8
+command_template=./benchmark_runner small_32 --planner bitset -N <N>
+
+=== small_32 bitset with N=1 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: bitset-wavefront-mapf | Top-K disjoint conflicts: 32 | Low-level: bitset-wavefront | Workers: 1
+  Total cost: 1060 | Total time: 37 | Final robot wait time: 0 | Final robot detours: 1 | Runtime: 15477.742 ms
+  Repair iterations: 3424 | Conflicts considered: 19496 | Candidate repairs: 38992
+  Low-level searches: 39024 | Successful repairs: 3504 | Failed repairs: 18 | Stagnant repairs: 2047
+  States expanded: 173461018 | States generated: 184764139
+  Solution snapshot: benchmark_solutions/small_32_bitset_solution.txt
+
+=== small_32 bitset with N=2 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: bitset-wavefront-mapf | Top-K disjoint conflicts: 32 | Low-level: bitset-wavefront | Workers: 2
+  Total cost: 1060 | Total time: 37 | Final robot wait time: 0 | Final robot detours: 1 | Runtime: 19803.680 ms
+  Repair iterations: 3424 | Conflicts considered: 19496 | Candidate repairs: 38992
+  Low-level searches: 39024 | Successful repairs: 3504 | Failed repairs: 18 | Stagnant repairs: 2047
+  States expanded: 173461018 | States generated: 184764139
+  Solution snapshot: benchmark_solutions/small_32_bitset_solution.txt
+
+=== small_32 bitset with N=4 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: bitset-wavefront-mapf | Top-K disjoint conflicts: 32 | Low-level: bitset-wavefront | Workers: 4
+  Total cost: 1060 | Total time: 37 | Final robot wait time: 0 | Final robot detours: 1 | Runtime: 33458.026 ms
+  Repair iterations: 3424 | Conflicts considered: 19496 | Candidate repairs: 38992
+  Low-level searches: 39024 | Successful repairs: 3504 | Failed repairs: 18 | Stagnant repairs: 2047
+  States expanded: 173461018 | States generated: 184764139
+  Solution snapshot: benchmark_solutions/small_32_bitset_solution.txt
+
+=== small_32 bitset with N=8 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: bitset-wavefront-mapf | Top-K disjoint conflicts: 32 | Low-level: bitset-wavefront | Workers: 8
+  Total cost: 1060 | Total time: 37 | Final robot wait time: 0 | Final robot detours: 1 | Runtime: 75979.855 ms
+  Repair iterations: 3424 | Conflicts considered: 19496 | Candidate repairs: 38992
+  Low-level searches: 39024 | Successful repairs: 3504 | Failed repairs: 18 | Stagnant repairs: 2047
+  States expanded: 173461018 | States generated: 184764139
+  Solution snapshot: benchmark_solutions/small_32_bitset_solution.txt
+

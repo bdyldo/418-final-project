@@ -41,16 +41,16 @@ BENCHMARK_RESULTS_DIR := benchmark_results
 THREAD_ARGS := $(if $(N),-N $(N),)
 
 .PHONY: all clean run test test_correctness test_few test_medium test_abundant \
-	test_few_8 test_few_16 test_few_32 test_medium_16 test_medium_32 test_medium_64 test_abundant_64 test_abundant_128 \
-	svg_few svg_medium svg_abundant svg_few_8 svg_few_16 svg_few_32 svg_medium_16 svg_medium_32 svg_medium_64 \
-	svg_abundant_64 svg_abundant_128 \
-	test_few_seq test_medium_seq test_abundant_seq \
-	test_few_8_seq test_few_16_seq test_few_32_seq test_medium_16_seq test_medium_32_seq test_medium_64_seq \
-	test_abundant_64_seq test_abundant_128_seq \
-	svg_few_seq svg_medium_seq svg_abundant_seq \
-	svg_few_8_seq svg_few_16_seq svg_few_32_seq svg_medium_16_seq svg_medium_32_seq svg_medium_64_seq \
-	svg_abundant_64_seq svg_abundant_128_seq \
-	animate_small_32
+		test_few_8 test_few_16 test_few_32 test_medium_16 test_medium_32 test_medium_64 test_abundant_64 test_abundant_128 \
+		svg_few svg_medium svg_abundant svg_few_8 svg_few_16 svg_few_32 svg_medium_16 svg_medium_32 svg_medium_64 \
+		svg_abundant_64 svg_abundant_128 \
+		test_few_seq test_medium_seq test_abundant_seq \
+		test_few_8_seq test_few_16_seq test_few_32_seq test_medium_16_seq test_medium_32_seq test_medium_64_seq \
+		test_abundant_64_seq test_abundant_128_seq \
+		svg_few_seq svg_medium_seq svg_abundant_seq \
+		svg_few_8_seq svg_few_16_seq svg_few_32_seq svg_medium_16_seq svg_medium_32_seq svg_medium_64_seq \
+		svg_abundant_64_seq svg_abundant_128_seq \
+		animate_small_32 animate_wide_1024
 
 all: $(TARGET)
 
@@ -284,7 +284,7 @@ animate_small_32: $(ANIMATION_TARGET)
 
 animate_wide_1024: $(ANIMATION_TARGET)
 	mkdir -p $(BENCHMARK_SVG_DIR)/wide_1024
-	./$(ANIMATION_TARGET) wide_1024 $(BENCHMARK_SVG_DIR)/wide_1024/wide_1024_animation.svg $(THREAD_ARGS)
+	./$(ANIMATION_TARGET) wide_1024_bitset $(BENCHMARK_SVG_DIR)/wide_1024/wide_1024_animation.svg $(THREAD_ARGS)
 
 clean:
 	rm -f $(TARGET) $(TEST_TARGET) $(BENCHMARK_TARGET) $(BENCHMARK_TARGET_SEQ) $(BENCHMARK_CASE_TOOL_TARGET) $(ANIMATION_TARGET)

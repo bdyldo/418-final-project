@@ -1,0 +1,575 @@
+Implementation timeline summary focused on small_32
+===================================================
+
+Primary testcase
+----------------
+
+The main testcase used in this summary is small_32:
+
+  Grid: 10 x 30
+  Robots: 32
+
+This was a useful stress case because it is small enough to run repeatedly, but
+dense enough to create many robot conflicts. It exposed the core tradeoff in the
+project: resolving collisions is the important MAPF work, but each repair round
+does not always expose enough independent work to keep many OpenMP threads busy.
+
+Primary result files used
+-------------------------
+
+  benchmark_results/small_32_scaling_40176493.txt
+  benchmark_results/small_32_parallel_beam8_scaling_20260424_084154.txt
+  benchmark_results/small_32_bitset_scaling_20260424_083916.txt
+  benchmark_results/small_32_parallel_beam8_n16_perf_summary.txt
+
+There is also:
+
+  benchmark_results/small_32_greedy_n16_perf_benchmark_20260424_085134.txt
+
+but that file only records the perf command setup and does not contain a full
+perf interpretation. The most useful profiling interpretation currently comes
+from the parallel beam-8 perf summary.
+
+
+High-level arc
+--------------
+
+The implementation path moved through three main versions:
+
+1. Greedy repair with batched disjoint conflict repair.
+2. Parallel/speculative greedy repair with a larger conflict pool and beam merge.
+3. Bitset wavefront low-level planning inside the MAPF greedy repair loop.
+
+There were also side experiments, especially suffix A*, but those were reverted
+because they did not improve the solver in practice. The final useful story is
+not "we found perfect scaling." The more honest and interesting story is:
+
+  We kept MAPF collision detection and collision resolution as the core problem.
+  We tried to expose parallelism at the high level through repair candidates.
+  We then tried to reduce the low-level search cost with a bitset wavefront
+  representation.
+  The best single-threaded result came from the bitset low-level planner, but
+  the overall MAPF repair structure still limited multicore scaling.
+
+
+Stage 0: Initial baseline and why the project moved away from exact CBS
+-----------------------------------------------------------------------
+
+The early project direction used standard MAPF components:
+
+  - collision detection
+  - A* as a low-level single-agent planner
+  - CBS-style conflict handling
+
+This is reflected in the git history with the commit:
+
+  6ac564b Added A* and CBS with benchmark testcases, only works for few_8
+
+The important lesson from this stage was that exact CBS was not practical for
+the target benchmark regime. It worked on very small cases, but the branching
+factor from conflicts became too expensive as the number of robots increased.
+That pushed the project toward a greedy repair approach: keep the MAPF semantics
+and collision resolution, but avoid maintaining a full CBS constraint tree.
+
+
+Stage 1: Greedy repair with batched disjoint conflict merging
+------------------------------------------------------------
+
+The first successful practical solver was greedy repair. The algorithm starts
+by planning an initial path for every robot, then repeatedly detects conflicts
+and repairs robots by adding constraints and replanning.
+
+The key improvement was not just "repair one conflict." The implementation
+selects several disjoint conflicts in each iteration:
+
+  - Detect all current vertex and edge collisions.
+  - Sort collisions by earliest timestep.
+  - Select up to top_k_conflicts conflicts, but require them to be robot-disjoint.
+  - For each selected conflict, generate two possible repair constraints, one
+    for each robot in the conflict.
+  - Replan the constrained robot with A*.
+  - Score each candidate by remaining collision count and total path cost.
+  - Keep the best candidate for each conflict.
+  - Try to merge multiple repaired paths into the current solution, validating
+    that the merged state improves the current collision/cost metrics.
+
+Why this was implemented:
+
+  The goal was to expose parallel work without abandoning MAPF collision
+  resolution. If conflicts are robot-disjoint, their repair candidates can be
+  evaluated independently. This creates a natural OpenMP parallel loop over
+  repair tasks while still using collision detection to validate the result.
+
+What the small_32 data shows:
+
+  Source: benchmark_results/small_32_scaling_40176493.txt
+
+  N=1:
+    Runtime: 156346.908 ms
+    Total cost: 1109
+    Total time: 39
+    Repair iterations: 4914
+    Conflicts considered: 29364
+    Candidate repairs: 58728
+    A* calls: 58760
+    Successful repairs: 4990
+    Stagnant repairs: 3282
+    States expanded: 158852792
+    States generated: 248070127
+
+  N=16:
+    Runtime: 33336.595 ms
+    Same solution quality and same search statistics as N=1
+
+  N=128:
+    Runtime: 34578.693 ms
+    Same solution quality and same search statistics as N=1
+
+Runtime trend for greedy-batch:
+
+  N=1:    156346.908 ms
+  N=2:     88871.642 ms
+  N=4:     53814.295 ms
+  N=8:     38351.059 ms
+  N=16:    33336.595 ms
+  N=32:    33572.528 ms
+  N=64:    33994.611 ms
+  N=128:   34578.693 ms
+
+Interpretation:
+
+  This was the first version that clearly got useful speedup on small_32.
+  Runtime improved from 156.3 seconds at N=1 to 33.3 seconds at N=16, which is
+  about a 4.7x speedup. After N=16, however, the curve plateaued and slightly
+  regressed.
+
+Why it stopped scaling:
+
+  The amount of algorithmic work is exactly the same across thread counts. The
+  output reports the same repair iterations, candidate repairs, A* calls, and
+  states expanded/generated for every N. Therefore, the thread count only changes
+  how that fixed work is scheduled.
+
+  The repair-task parallelism is bounded by the number of selected disjoint
+  conflicts. With 32 robots, at most 16 robot-disjoint conflicts can be selected
+  in one round, and each conflict gives at most two repair tasks. That means a
+  small_32 repair round cannot naturally provide hundreds of independent tasks.
+  Once the thread count exceeds the available repair tasks, more threads mostly
+  add scheduling and synchronization overhead.
+
+  Another important point is that many repair attempts were stagnant. The run
+  recorded 3282 stagnant repairs out of 4990 successful repairs. That means many
+  accepted repairs did not immediately reduce the collision count, even if they
+  were useful for eventually reaching a solution. This shows why the problem is
+  difficult for a purely local greedy objective.
+
+
+Side experiment: suffix A* repair
+---------------------------------
+
+A suffix A* idea was attempted after the greedy repair baseline. The motivation
+was reasonable:
+
+  If a conflict occurs at time t, keep the robot's prefix path before t and only
+  replan the suffix from around the conflict time to the goal.
+
+The hoped-for benefit was to reduce each low-level A* search cost. This would
+not create more parallel tasks, but it could make each repair task cheaper.
+
+Why it did not remain in the implementation:
+
+  The first conservative version compared suffix A* against a full replan for
+  the same constraint and kept the better candidate. That protected solution
+  quality, but it often meant running both searches, so it increased rather than
+  decreased work.
+
+  A later suffix-first with fallback-on-failure version removed the always-compare
+  cost, but it accepted locally valid suffix repairs that were globally poor for
+  the greedy MAPF repair loop. In the recovered chat history, few_8 and few_16
+  timed out under that experiment. The conclusion was that suffix repair reduced
+  search scope in some cases, but degraded repair quality enough to increase the
+  outer repair work.
+
+Measurement note:
+
+  There is no durable small_32 benchmark_results file for the suffix experiment
+  in the current repo because the experiment was reverted. For that reason,
+  suffix A* should be described as an attempted and abandoned optimization, not
+  as one of the main measured result curves.
+
+
+Stage 2: Parallel/speculative greedy repair with beam merge
+----------------------------------------------------------
+
+After greedy-batch exposed a scaling limit, the next attempt was to create more
+high-level search diversity and better repair choices. This became the
+parallel-speculative planner.
+
+Core changes from greedy-batch:
+
+  - Use a larger conflict pool, reported as Conflict pool: 128.
+  - Evaluate speculative candidates in parallel.
+  - Keep a beam of good candidates, reported as Beam width: 8 in the main run.
+  - Support lookahead depth, reported as Lookahead: 1 in the benchmark file.
+  - Merge multiple candidate repairs while avoiding duplicate constraints and
+    avoiding candidates that modify already-changed robots.
+
+Why this was implemented:
+
+  Greedy-batch still made many stagnant repairs and required 4914 repair
+  iterations on small_32. The speculative planner tried to make better choices
+  per iteration by considering a wider set of conflicts and keeping multiple
+  promising candidates. The goal was both better solution quality and more
+  useful parallel work.
+
+What the small_32 data shows:
+
+  Source: benchmark_results/small_32_parallel_beam8_scaling_20260424_084154.txt
+
+  N=1:
+    Runtime: 38441.430 ms
+    Total cost: 1019
+    Total time: 36
+    Repair iterations: 1628
+    Conflicts considered: 10546
+    Candidate repairs: 21092
+    Low-level searches: 21124
+    Successful repairs: 1657
+    Stagnant repairs: 1128
+    States expanded: 30946123
+    States generated: 54820549
+
+  N=16:
+    Runtime: 81924.746 ms
+    Same solution quality and same search statistics as N=1
+
+  N=128:
+    Runtime: 80488.026 ms
+    Same solution quality and same search statistics as N=1
+
+Runtime trend for parallel-speculative beam-8:
+
+  N=1:     38441.430 ms
+  N=2:     48049.935 ms
+  N=4:     57529.901 ms
+  N=8:     81349.595 ms
+  N=16:    81924.746 ms
+  N=32:    84204.047 ms
+  N=64:    81427.964 ms
+  N=128:   80488.026 ms
+
+Compared with greedy-batch:
+
+  Greedy-batch N=1:
+    Runtime: 156346.908 ms
+    Total cost: 1109
+    Total time: 39
+    Repair iterations: 4914
+    Low-level searches/A* calls: 58760
+    States expanded: 158852792
+
+  Parallel-speculative beam-8 N=1:
+    Runtime: 38441.430 ms
+    Total cost: 1019
+    Total time: 36
+    Repair iterations: 1628
+    Low-level searches: 21124
+    States expanded: 30946123
+
+Interpretation:
+
+  Algorithmically, the speculative planner was a real improvement. It found a
+  better small_32 solution: total cost dropped from 1109 to 1019, and total time
+  dropped from 39 to 36. It also reduced the number of repair iterations from
+  4914 to 1628 and the number of low-level searches from 58760 to 21124.
+
+  However, it did not scale with more threads. In fact, the N=1 run was the
+  fastest beam-8 run. N=16 was more than twice as slow as N=1.
+
+Why it did not work as a parallel scaling strategy:
+
+  Source: benchmark_results/small_32_parallel_beam8_n16_perf_summary.txt
+
+  The N=16 profile reported:
+
+    Runtime under profiling: 90.461 s
+    perf stat CPU utilization: 0.935 CPUs
+    IPC: 0.79
+    backend stalled cycles: 63.71 percent
+
+  The top sampled entries included:
+
+    27.14 percent in libgomp
+    24.38 percent in libgomp
+     9.22 percent in AStarPlanner::findPath
+
+  The perf summary states that the hot libgomp addresses were consistent with a
+  pause/compare spin loop, which means waiting/synchronization rather than useful
+  application computation.
+
+  This is the key result: the parallel-speculative planner improved the search
+  trajectory, but the OpenMP execution did not keep many cores busy. The profile
+  showed less than one CPU utilized on average even though 16 workers were
+  requested. The bottleneck was not one obvious serial merge function. It was
+  that each repair iteration exposed too little useful independent work, while
+  OpenMP synchronization and A* internals remained expensive.
+
+
+Stage 3: Bitset wavefront low-level planner inside MAPF repair
+--------------------------------------------------------------
+
+The next major change attacked a different bottleneck. The profiler showed that
+the useful application hotspot was still low-level A* search: hash-table lookups,
+allocation/free traffic, and priority-queue style irregular work.
+
+The bitset wavefront planner changed the low-level representation:
+
+  - Represent reachable cells at each timestep as bitsets.
+  - Pack up to 64 grid cells into one uint64_t word.
+  - Use bit operations such as shifts, AND, OR, and masks to propagate the
+    wavefront.
+  - Pre-index vertex and edge constraints into bit masks.
+  - Store compact parent moves for path reconstruction.
+
+Why this was implemented:
+
+  A* is irregular and priority-queue based. It is hard to parallelize well and
+  spends meaningful time in hash tables and memory allocation. Bitset wavefront
+  reformulates low-level pathfinding as a regular bulk-synchronous frontier
+  computation over dense arrays. That connects directly to parallel computer
+  architecture ideas:
+
+    - data-parallel wavefront propagation
+    - bit-level parallelism within machine words
+    - better spatial locality than hash-table-based A*
+    - a regular per-timestep structure that can be parallelized by rows on
+      sufficiently large grids
+
+What the small_32 data shows:
+
+  Source: benchmark_results/small_32_bitset_scaling_20260424_083916.txt
+
+  N=1:
+    Runtime: 15477.742 ms
+    Total cost: 1060
+    Total time: 37
+    Repair iterations: 3424
+    Conflicts considered: 19496
+    Candidate repairs: 38992
+    Low-level searches: 39024
+    Successful repairs: 3504
+    Failed repairs: 18
+    Stagnant repairs: 2047
+    States expanded: 173461018
+    States generated: 184764139
+
+Runtime trend for bitset-wavefront-mapf:
+
+  N=1:     15477.742 ms
+  N=2:     19803.680 ms
+  N=4:     33458.026 ms
+  N=8:     75979.855 ms
+
+Compared with previous versions at N=1:
+
+  Greedy-batch:
+    Runtime: 156346.908 ms
+    Total cost: 1109
+    Total time: 39
+
+  Parallel-speculative beam-8:
+    Runtime: 38441.430 ms
+    Total cost: 1019
+    Total time: 36
+
+  Bitset-wavefront MAPF:
+    Runtime: 15477.742 ms
+    Total cost: 1060
+    Total time: 37
+
+Interpretation:
+
+  The bitset-wavefront MAPF version gave the best single-thread runtime on
+  small_32. It was about 10.1x faster than greedy-batch at N=1 and about 2.5x
+  faster than parallel-speculative beam-8 at N=1.
+
+  It also improved solution quality relative to greedy-batch: total cost dropped
+  from 1109 to 1060, and total time dropped from 39 to 37. It did not beat the
+  beam-8 speculative planner on solution quality, because beam-8 reached total
+  cost 1019 and total time 36. But it was much faster as a single-threaded run.
+
+Why it did not scale on small_32:
+
+  The bitset low-level kernel is efficient, but small_32 is a 10x30 grid. That
+  means there are only 10 rows and only one 64-bit chunk per row. The row-level
+  bitset parallelism has too little work per timestep to justify many threads.
+
+  The MAPF repair loop also still repeats thousands of high-level iterations.
+  The bitset run required 3424 repair iterations and 39024 low-level searches.
+  Across N=1,2,4,8, all reported search statistics are identical. The runtime
+  increases with N, which means the extra threads are not doing more useful
+  algorithmic work. They are adding OpenMP overhead, scheduling cost, cache
+  pressure, and synchronization around a workload that is too fine-grained for
+  this grid.
+
+  This is why N=1 is the best small_32 bitset result, while N=8 is much worse:
+
+    N=1: 15477.742 ms
+    N=8: 75979.855 ms
+
+  The bitset implementation succeeded as a low-level representation improvement,
+  but small_32 is not a good case for demonstrating thread-level scaling inside
+  the bitset kernel.
+
+
+Overall comparison on small_32
+------------------------------
+
+Best single-thread runtime:
+
+  bitset-wavefront MAPF, N=1
+  Runtime: 15477.742 ms
+
+Best solution quality among the three measured small_32 variants:
+
+  parallel-speculative beam-8
+  Total cost: 1019
+  Total time: 36
+
+Best multicore scaling shape:
+
+  greedy-batch improved from N=1 to N=16, then plateaued.
+  Runtime changed from 156346.908 ms to 33336.595 ms.
+
+Worst multicore scaling shape:
+
+  bitset-wavefront MAPF and parallel-speculative beam-8 both got slower as more
+  threads were added on small_32.
+
+Concise data table:
+
+  Planner                     N    Runtime ms    Cost    Makespan    Repair iters    Low-level searches
+  ------------------------------------------------------------------------------------------------------
+  greedy-batch                1    156346.908    1109    39          4914            58760
+  greedy-batch               16     33336.595    1109    39          4914            58760
+  greedy-batch              128     34578.693    1109    39          4914            58760
+  parallel-spec beam-8        1     38441.430    1019    36          1628            21124
+  parallel-spec beam-8       16     81924.746    1019    36          1628            21124
+  parallel-spec beam-8      128     80488.026    1019    36          1628            21124
+  bitset-wavefront MAPF       1     15477.742    1060    37          3424            39024
+  bitset-wavefront MAPF       8     75979.855    1060    37          3424            39024
+
+
+What we learned
+---------------
+
+1. Collision resolution stayed central.
+
+   The project did not become independent single-agent planning. The main
+   measured bitset result is "bitset-wavefront-mapf", meaning bitset was used as
+   the low-level planner inside the collision-resolving greedy repair loop.
+   Collision detection and repair remained the key mechanism.
+
+2. High-level repair parallelism has a natural ceiling.
+
+   The greedy-batch planner parallelizes repair candidates, but the number of
+   candidates is tied to disjoint conflicts and therefore to robot count. On a
+   32-robot case, this does not expose enough work for 64 or 128 cores.
+
+3. Better repair choices can matter more than raw thread count.
+
+   The parallel-speculative beam-8 planner reduced repair iterations from 4914
+   to 1628 and improved total cost from 1109 to 1019. That is a meaningful
+   algorithmic improvement. But it still failed to scale as a threaded program
+   because synchronization dominated at higher thread counts.
+
+4. Low-level representation changes can give large constant-factor wins.
+
+   Bitset wavefront reduced small_32 N=1 runtime from 156.3 seconds in
+   greedy-batch to 15.5 seconds while still solving MAPF. This is the strongest
+   positive result in the current small_32 data.
+
+5. Faster low-level search does not automatically create multicore scaling.
+
+   Bitset wavefront makes each low-level search more regular and cheaper, but
+   the full MAPF solver still runs inside an iterative high-level repair loop.
+   On small_32, the grid is too small for useful row-level bitset threading, and
+   the repair loop still creates repeated synchronization overhead.
+
+6. The negative scaling results are still reportable.
+
+   The results show a real parallel systems lesson: exposing parallelism is not
+   enough. Granularity, synchronization frequency, memory behavior, and the
+   serial high-level control structure all determine whether more processors help.
+
+
+Recommended report framing
+--------------------------
+
+A good report thesis would be:
+
+  We implemented and evaluated several MAPF repair strategies for dense
+  multi-robot path planning. Batched greedy repair exposed repair-candidate
+  parallelism and achieved speedup up to 16 threads on small_32, but plateaued
+  because the number of independent conflicts was bounded by robot count.
+  A speculative beam planner improved solution quality and reduced repair
+  iterations, but profiling showed that OpenMP synchronization dominated at
+  higher thread counts. Finally, replacing A* with a bitset wavefront low-level
+  solver produced the best single-thread small_32 runtime by exploiting bit-level
+  parallelism and dense memory access. However, the bitset MAPF implementation
+  still scaled poorly on small_32 because the grid was too small and the
+  high-level repair loop exposed too little coarse-grained parallel work.
+
+Possible figure set:
+
+  Figure 1:
+    small_32 runtime vs threads for greedy-batch.
+    Show speedup until N=16 and plateau afterward.
+
+  Figure 2:
+    small_32 runtime comparison at N=1:
+      greedy-batch vs parallel-speculative beam-8 vs bitset-wavefront MAPF.
+    This highlights the bitset constant-factor win.
+
+  Figure 3:
+    small_32 runtime vs threads for bitset-wavefront MAPF.
+    This highlights negative scaling and motivates the granularity discussion.
+
+  Figure 4 or table:
+    Perf summary for parallel-speculative beam-8 N=16:
+      0.935 CPUs utilized
+      libgomp synchronization dominates samples
+      A* remains the largest useful application hotspot
+
+
+Do we need more data?
+---------------------
+
+For a small_32-focused report/poster narrative, the existing data is enough.
+The current benchmark_results files support:
+
+  - a baseline greedy scaling curve
+  - a speculative parallel planner curve
+  - a bitset MAPF curve
+  - a profiling explanation for poor scaling in the speculative planner
+
+Optional data that would make the report stronger, but is not strictly required:
+
+  1. Repeat each small_32 run 3 times and report median runtime.
+     Current files appear to contain one run per N, so noise is not quantified.
+
+  2. Add a perf summary for small_32 bitset-wavefront MAPF at N=8.
+     This would directly support the explanation for bitset negative scaling.
+
+  3. Add one larger/wider-grid bitset-only or bitset-MAPF experiment if there is
+     time. That would show whether bitset row/chunk parallelism improves when the
+     grid has more work per timestep. This is optional because the user asked to
+     focus on small_32.
+
+  4. Preserve a short note about suffix A* as an abandoned experiment, but do
+     not make it a main result unless durable benchmark files are regenerated.
+
+If more data is generated, the highest-value addition would be a bitset MAPF perf
+summary on small_32 at a thread count where runtime gets worse, such as N=8.
+That would let the report make the negative-scaling explanation with the same
+confidence as the beam-8 perf section.

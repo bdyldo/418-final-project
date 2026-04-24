@@ -28,6 +28,7 @@ enum class PlannerKind {
   Greedy,
   Parallel,
   Bitset,
+  BitsetIndependent,
 };
 
 struct ParallelPlannerOptions {
@@ -37,8 +38,11 @@ struct ParallelPlannerOptions {
 };
 
 std::string plannerKindName(PlannerKind planner_kind) {
+  if (planner_kind == PlannerKind::BitsetIndependent) {
+    return "bitset-wavefront-independent";
+  }
   if (planner_kind == PlannerKind::Bitset) {
-    return "bitset-wavefront";
+    return "bitset-wavefront-mapf";
   }
   if (planner_kind == PlannerKind::Parallel) {
     return "parallel-speculative";
@@ -48,6 +52,9 @@ std::string plannerKindName(PlannerKind planner_kind) {
 
 std::string plannerArtifactCaseName(const std::string& case_name,
                                     PlannerKind planner_kind) {
+  if (planner_kind == PlannerKind::BitsetIndependent) {
+    return case_name + "_bitset_independent";
+  }
   if (planner_kind == PlannerKind::Bitset) {
     return case_name + "_bitset";
   }
@@ -159,7 +166,11 @@ PlannerKind parsePlannerKind(const std::string& value) {
   if (value == "bitset") {
     return PlannerKind::Bitset;
   }
-  throw std::invalid_argument("planner must be 'greedy', 'parallel', or 'bitset'");
+  if (value == "bitset-independent") {
+    return PlannerKind::BitsetIndependent;
+  }
+  throw std::invalid_argument(
+      "planner must be 'greedy', 'parallel', 'bitset', or 'bitset-independent'");
 }
 
 int availableWorkerCount() {
@@ -187,6 +198,16 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   int collision_count = 0;
   std::optional<std::vector<Robot>> solution;
   if (planner_kind == PlannerKind::Bitset) {
+    GreedyRepairPlanner planner(
+        benchmark_case.rows,
+        benchmark_case.cols,
+        10000,
+        32,
+        LowLevelPlannerKind::BitsetWavefront);
+    workers = planner.maxWorkerCount();
+    top_k_conflicts = planner.topKConflicts();
+    solution = planner.findPaths(benchmark_case.robots, &greedy_stats);
+  } else if (planner_kind == PlannerKind::BitsetIndependent) {
     BitsetWavefrontPlanner planner(benchmark_case.rows, benchmark_case.cols);
     std::vector<Robot> low_level_solution = benchmark_case.robots;
     const int robot_count = static_cast<int>(low_level_solution.size());
@@ -297,7 +318,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
   const std::vector<Collision> collisions =
       collision_detector.detectCollisions(*solution);
   collision_count = static_cast<int>(collisions.size());
-  if (planner_kind != PlannerKind::Bitset && !collisions.empty()) {
+  if (planner_kind != PlannerKind::BitsetIndependent && !collisions.empty()) {
     throw std::runtime_error(benchmark_case.name + ": solution still contains collisions");
   }
 
@@ -346,8 +367,11 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
     std::cout << " | Conflict pool: " << conflict_pool_size
               << " | Beam width: " << beam_width
               << " | Lookahead: " << lookahead_depth;
-  } else if (planner_kind == PlannerKind::Bitset) {
+  } else if (planner_kind == PlannerKind::BitsetIndependent) {
     std::cout << " | Mode: independent-low-level";
+  } else if (planner_kind == PlannerKind::Bitset) {
+    std::cout << " | Top-K disjoint conflicts: " << top_k_conflicts
+              << " | Low-level: bitset-wavefront";
   } else {
     std::cout << " | Top-K disjoint conflicts: " << top_k_conflicts;
   }
@@ -358,7 +382,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
             << " | Final robot detours: " << finalRobotDetourCount(*solution)
             << " | Runtime: " << std::fixed << std::setprecision(3)
             << elapsed_ms.count() << " ms\n";
-  if (planner_kind == PlannerKind::Bitset) {
+  if (planner_kind == PlannerKind::BitsetIndependent) {
     std::cout << "  Independent planning collisions: " << collision_count
               << " | Low-level searches: " << greedy_stats.low_level_searches
               << "\n"
@@ -369,7 +393,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
               << " | Conflicts considered: " << greedy_stats.conflicts_considered
               << " | Candidate repairs: "
               << greedy_stats.candidate_repairs_evaluated << "\n"
-              << "  A* calls: " << greedy_stats.low_level_searches
+              << "  Low-level searches: " << greedy_stats.low_level_searches
               << " | Successful repairs: " << greedy_stats.successful_repairs
               << " | Failed repairs: " << greedy_stats.failed_repairs
               << " | Stagnant repairs: " << greedy_stats.stagnant_repairs << "\n"
@@ -390,7 +414,7 @@ void runBenchmarkCase(const BenchmarkCase& benchmark_case,
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
             << " <few|medium|abundant|few_8|few_16|few_32|small_32|small_64|wide_1024|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
-            << " [svg_output_dir] [-N threads] [--planner greedy|parallel|bitset]"
+            << " [svg_output_dir] [-N threads] [--planner greedy|parallel|bitset|bitset-independent]"
             << " [--conflict-pool count] [--beam-width count] [--lookahead 1|2]\n";
   std::cerr << "Benchmark case store: " << benchmarkCaseStorePath() << "\n";
 }

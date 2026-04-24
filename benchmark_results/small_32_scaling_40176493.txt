@@ -67,4 +67,3 @@ small_32
   Repair iterations: 4914 | Conflicts considered: 29364 | Candidate repairs: 58728
   A* calls: 58760 | Successful repairs: 4990 | Failed repairs: 0 | Stagnant repairs: 3282
   States expanded: 158852792 | States generated: 248070127
-

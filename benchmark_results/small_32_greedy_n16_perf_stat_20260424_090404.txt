@@ -1,0 +1,7 @@
+small_32 greedy-batch N=16 perf stat
+planner=greedy-batch
+host=br014.ib.bridges2.psc.edu
+date=2026-04-24T09:04:04-04:00
+omp_proc_bind=false
+command=perf stat -d ./benchmark_runner small_32 -N 16
+

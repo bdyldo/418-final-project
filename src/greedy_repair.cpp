@@ -143,12 +143,15 @@ Robot* findRobotById(std::vector<Robot>& robots, int robot_id) {
 GreedyRepairPlanner::GreedyRepairPlanner(int rows,
                                          int cols,
                                          int max_repairs,
-                                         int top_k_conflicts)
+                                         int top_k_conflicts,
+                                         LowLevelPlannerKind low_level_planner_kind)
     : rows_(rows),
       cols_(cols),
       max_repairs_(max_repairs),
       top_k_conflicts_(top_k_conflicts),
-      a_star_(rows, cols) {
+      low_level_planner_kind_(low_level_planner_kind),
+      a_star_(rows, cols),
+      bitset_wavefront_(rows, cols) {
   if (rows_ <= 0 || cols_ <= 0) {
     throw std::invalid_argument("grid dimensions must be positive");
   }
@@ -173,7 +176,7 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
 
   for (Robot& robot : current_robots) {
     AStarStats a_star_stats;
-    const auto path = a_star_.findPath(robot, constraints, &a_star_stats);
+    const auto path = findLowLevelPath(robot, constraints, &a_star_stats);
     if (stats != nullptr) {
       ++stats->low_level_searches;
       stats->low_level_states_expanded += a_star_stats.states_expanded;
@@ -250,7 +253,6 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
       const RepairTask& task = tasks[task_index];
 
       std::vector<Robot> child_robots = current_robots;
-      AStarPlanner a_star(rows_, cols_);
       CollisionDetector collision_detector;
       AStarStats a_star_stats;
       std::optional<Robot> repaired_robot;
@@ -261,7 +263,7 @@ std::optional<std::vector<Robot>> GreedyRepairPlanner::findPaths(
         }
 
         const auto path =
-            a_star.findPath(robot, task.constraints, &a_star_stats);
+            findLowLevelPath(robot, task.constraints, &a_star_stats);
         ++local_searches;
         local_states_expanded += a_star_stats.states_expanded;
         local_states_generated += a_star_stats.states_generated;
@@ -417,6 +419,16 @@ int GreedyRepairPlanner::maxWorkerCount() const {
 #else
   return 1;
 #endif
+}
+
+std::optional<std::vector<Point>> GreedyRepairPlanner::findLowLevelPath(
+    const Robot& robot,
+    const std::vector<Constraint>& constraints,
+    AStarStats* stats) const {
+  if (low_level_planner_kind_ == LowLevelPlannerKind::BitsetWavefront) {
+    return bitset_wavefront_.findPath(robot, constraints, stats);
+  }
+  return a_star_.findPath(robot, constraints, stats);
 }
 
 int GreedyRepairPlanner::totalCost(const std::vector<Robot>& robots) const {

@@ -1,0 +1,80 @@
+small_32 parallel scaling run
+planner=parallel-speculative
+beam_width=8
+host=br014.ib.bridges2.psc.edu
+date=2026-04-24T08:41:54-04:00
+thread_counts=1 2 4 8 16 32 64 128
+command_template=./benchmark_runner small_32 --planner parallel --beam-width 8 -N <N>
+
+=== small_32 parallel beam-8 with N=1 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 1
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 38441.430 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=2 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 2
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 48049.935 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=4 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 4
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 57529.901 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=8 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 8
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 81349.595 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=16 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 16
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 81924.746 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=32 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 32
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 84204.047 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=64 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 64
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 81427.964 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+
+=== small_32 parallel beam-8 with N=128 ===
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: parallel-speculative | Conflict pool: 128 | Beam width: 8 | Lookahead: 1 | Workers: 128
+  Total cost: 1019 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 80488.026 ms
+  Repair iterations: 1628 | Conflicts considered: 10546 | Candidate repairs: 21092
+  Low-level searches: 21124 | Successful repairs: 1657 | Failed repairs: 0 | Stagnant repairs: 1128
+  States expanded: 30946123 | States generated: 54820549
+  Solution snapshot: benchmark_solutions/small_32_solution.txt
+

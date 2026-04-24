@@ -266,6 +266,29 @@ void testGreedyRepairBatchesDisjointConflicts() {
           "greedy_async: expected at least one committed repair");
 }
 
+void testBitsetGreedyRepairResolvesSimpleSwap() {
+  std::vector<Robot> robots = {
+      {1, {0, 0}, {0, 1}, {}},
+      {2, {0, 1}, {0, 0}, {}},
+  };
+
+  GreedyRepairPlanner planner(
+      2, 2, 10000, 4, LowLevelPlannerKind::BitsetWavefront);
+  GreedyRepairStats stats;
+  const auto solution = planner.findPaths(robots, &stats);
+
+  require(solution.has_value(),
+          "bitset_greedy_simple_swap: expected a solution");
+
+  CollisionDetector detector;
+  const std::vector<Collision> collisions =
+      detector.detectCollisions(*solution);
+  require(collisions.empty(),
+          "bitset_greedy_simple_swap: solution still has collisions");
+  require(stats.low_level_searches > 0,
+          "bitset_greedy_simple_swap: expected low-level replanning");
+}
+
 void testParallelGreedyRepairResolvesSimpleSwap() {
   std::vector<Robot> robots = {
       {1, {0, 0}, {0, 1}, {}},
@@ -316,6 +339,8 @@ int main() {
     runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
     runTest(testGreedyRepairBatchesDisjointConflicts,
             "greedy_async_multi_conflict");
+    runTest(testBitsetGreedyRepairResolvesSimpleSwap,
+            "bitset_greedy_simple_swap");
     runTest(testParallelGreedyRepairResolvesSimpleSwap,
             "parallel_greedy_simple_swap");
   } catch (const std::exception& error) {
