@@ -1,0 +1,124 @@
+small_32 parallel beam-8 profiler summary
+=========================================
+
+Workload
+--------
+Command profiled:
+  ./benchmark_runner small_32 --planner parallel --beam-width 8 -N 16
+
+Profiler commands:
+  perf record -F 99 --output perf_small32_parallel_beam8_n16.data -- \
+    ./benchmark_runner small_32 --planner parallel --beam-width 8 -N 16
+
+  perf stat -d ./benchmark_runner small_32 --planner parallel --beam-width 8 -N 16
+
+  perf report --stdio -i perf_small32_parallel_beam8_n16.data \
+    --sort overhead,symbol --percent-limit 0.3
+
+
+Benchmark result under profiling
+--------------------------------
+Planner: parallel-speculative
+Conflict pool: 128
+Beam width: 8
+Lookahead: 1
+Workers requested: 16
+
+Runtime reported by benchmark:
+  90.461 s
+
+Search statistics:
+  Repair iterations:     1628
+  Conflicts considered:  10546
+  Candidate repairs:     21092
+  A* calls:              21124
+  Successful repairs:    1657
+  Stagnant repairs:      1128
+  States expanded:       30946123
+  States generated:      54820549
+
+
+perf stat highlights
+--------------------
+task-clock:u:                 84590.99 ms
+CPUs utilized:                0.935
+cycles:u:                     266011309748
+instructions:u:               209921595789
+IPC:                          0.79
+backend stalled cycles:       63.71%
+frontend stalled cycles:      0.93%
+branch misses:                1.88%
+page faults:                  155158
+time elapsed:                 90.477 s
+user time:                    81.710 s
+sys time:                     1.044 s
+
+Interpretation of perf stat:
+  Even though the run requested 16 OpenMP workers, the process averaged
+  less than 1 CPU utilized (0.935). This indicates that the application
+  is not sustaining broad useful parallel work across the thread team.
+
+
+Top sampled hotspots from perf report
+-------------------------------------
+Samples: 12K cycles:u samples
+Approximate event count: 510145223339
+
+Top entries:
+  27.14%  libgomp 0x000000000001e02a
+  24.38%  libgomp 0x000000000001de62
+   9.22%  AStarPlanner::findPath
+   5.41%  SearchState/SearchCost hashtable _M_find_before_node
+   2.54%  _int_malloc
+   2.49%  SearchState/SearchCost map operator[]
+   2.23%  _int_free
+   1.94%  orderedMoves insertion helper
+   1.89%  orderedMoves insertion sort
+   1.82%  VertexConstraint hashtable _M_find_before_node
+   1.71%  SearchState/SearchCost hashtable find
+   1.45%  priority queue push_heap
+   1.23%  VertexConstraint hashtable find
+   1.06%  EdgeConstraint hashtable find
+   0.95%  memmove
+   0.91%  SearchState parent-map hashtable _M_find_before_node
+   0.80%  cfree / malloc_consolidate
+   0.66%  Point -> vector<int> map operator[] (collision detection)
+   0.36%  CollisionDetector::positionAtTime
+   0.33%  CollisionDetector::detectEdgeCollisions
+
+OpenMP runtime note:
+  The hottest libgomp addresses were inspected with objdump. They land in a
+  pause/compare spin loop in libgomp, consistent with barrier/synchronization
+  waiting rather than useful application computation.
+
+
+Main conclusions
+----------------
+1. The dominant bottleneck in this run is OpenMP synchronization/waiting
+   overhead, not a single serial merge or collision-detection function.
+
+2. The main useful compute bottleneck is A* search, especially:
+   - unordered_map / unordered_set lookups
+   - memory allocation and free traffic
+   - repeated small sorting in orderedMoves()
+
+3. Collision detection and merge validation are not the primary hotspots in
+   this profile. They appear in the report, but at much lower overhead than
+   A* and libgomp waiting.
+
+4. The plateau in scaling for the beam-locked small_32 run is therefore best
+   explained by:
+   - too little useful parallel work per repair iteration
+   - substantial waiting/synchronization overhead in libgomp
+   - expensive A* internals once a worker actually gets useful work
+
+
+Short report-ready takeaway
+---------------------------
+Profiling the beam-locked small_32 parallel planner at N=16 shows that the
+program does not spend most of its time in a serial merge step. Instead, more
+than half of sampled cycles occur inside libgomp synchronization/spin loops,
+while the largest application hotspot is A* search and its hash-table/memory
+management overhead. perf stat reports only 0.935 CPUs utilized on average,
+indicating that the thread team is mostly underutilized because each repair
+iteration exposes too little independent work.

@@ -1,0 +1,38 @@
+Persistent OpenMP tasking experiment summary
+
+Change tested:
+- Replaced the per-iteration `parallel for` loops in `parallel_greedy_repair.cpp`
+  with a persistent OpenMP team using `taskloop`.
+- Grouped multiple speculative repair candidates into one task to reduce barrier
+  and scheduling overhead.
+
+Observed result:
+- The modified version was slower than the previous `parallel for` baseline.
+- On `few_16 --planner parallel -N 8`, runtime increased from the earlier
+  baseline (~715 ms in the best prior run, ~925 ms after reverting) to about
+  1186 ms with the persistent-taskloop version.
+- On `small_32 --planner parallel --beam-width 8 -N 16`, the modified version
+  remained extremely slow locally (~132 s) and did not improve the scaling wall.
+
+Interpretation:
+- The main issue was not just barrier cost. The planner still exposes too little
+  independent work per iteration, so a persistent tasking structure cannot keep
+  threads busy for long.
+- The taskloop version added scheduling overhead on top of the same limited
+  candidate set, which made the lightweight case slower.
+- This result supports the earlier profiling conclusion: the dominant problem is
+  insufficient parallel work and A* cost, not a single removable synchronization
+  point.
+
+Report-ready paragraph:
+We also evaluated a persistent OpenMP tasking version of the speculative repair
+planner, where a long-lived thread team consumed batched repair candidates via
+`taskloop` instead of launching a new `parallel for` each iteration. This
+optimization did not improve performance. In practice, each repair iteration
+still generated too few independent candidate repairs to keep many threads busy,
+so the persistent task scheduler mostly added overhead without increasing useful
+parallel work. The lightweight `few_16` benchmark regressed relative to the
+earlier `parallel for` implementation, and `small_32` remained bottlenecked by
+limited task-level parallelism and expensive low-level A* searches. This
+negative result reinforced our profiling conclusion that the primary scalability
+limit is lack of parallel work per iteration rather than barrier cost alone.

@@ -24,12 +24,12 @@ SEQ_CXXFLAGS := $(BASE_CXXFLAGS)
 SEQ_LDFLAGS := $(FILESYSTEM_LDFLAGS)
 
 TARGET := grid_demo
-SRCS := src/main.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
+SRCS := src/main.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/time_expanded_bfs.cpp src/bitset_wavefront.cpp src/greedy_repair.cpp src/parallel_greedy_repair.cpp
 TEST_TARGET := correctness_tests
-TEST_SRCS := tests/correctness_tests.cpp src/grid_planner.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp
+TEST_SRCS := tests/correctness_tests.cpp src/grid_planner.cpp src/collision_detector.cpp src/a_star.cpp src/time_expanded_bfs.cpp src/bitset_wavefront.cpp src/greedy_repair.cpp src/parallel_greedy_repair.cpp
 BENCHMARK_TARGET := benchmark_runner
 BENCHMARK_TARGET_SEQ := benchmark_runner_seq
-BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp src/solution_snapshot.cpp
+BENCHMARK_COMMON_SRCS := src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/time_expanded_bfs.cpp src/bitset_wavefront.cpp src/greedy_repair.cpp src/parallel_greedy_repair.cpp src/solution_snapshot.cpp
 BENCHMARK_SRCS := benchmarks/benchmark_runner.cpp $(BENCHMARK_COMMON_SRCS)
 BENCHMARK_CASE_TOOL_TARGET := benchmark_case_tool
 BENCHMARK_CASE_TOOL_SRCS := benchmarks/benchmark_case_tool.cpp src/benchmark_cases.cpp
@@ -54,22 +54,22 @@ THREAD_ARGS := $(if $(N),-N $(N),)
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS) src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
+$(TARGET): $(SRCS) src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/time_expanded_bfs.h src/bitset_wavefront.h src/greedy_repair.h src/parallel_greedy_repair.h
 	$(CXX) $(CXXFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
 
-$(TEST_TARGET): $(TEST_SRCS) src/grid_planner.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
+$(TEST_TARGET): $(TEST_SRCS) src/grid_planner.h src/collision_detector.h src/constraints.h src/a_star.h src/time_expanded_bfs.h src/bitset_wavefront.h src/greedy_repair.h src/parallel_greedy_repair.h
 	$(CXX) $(CXXFLAGS) -I src $(TEST_SRCS) -o $(TEST_TARGET) $(LDFLAGS)
 
-$(BENCHMARK_TARGET): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
+$(BENCHMARK_TARGET): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/time_expanded_bfs.h src/bitset_wavefront.h src/greedy_repair.h src/parallel_greedy_repair.h
 	$(CXX) $(CXXFLAGS) -I src $(BENCHMARK_SRCS) -o $(BENCHMARK_TARGET) $(LDFLAGS)
 
-$(BENCHMARK_TARGET_SEQ): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h
+$(BENCHMARK_TARGET_SEQ): $(BENCHMARK_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/time_expanded_bfs.h src/bitset_wavefront.h src/greedy_repair.h src/parallel_greedy_repair.h
 	$(CXX) $(SEQ_CXXFLAGS) -I src $(BENCHMARK_SRCS) -o $(BENCHMARK_TARGET_SEQ) $(SEQ_LDFLAGS)
 
 $(BENCHMARK_CASE_TOOL_TARGET): $(BENCHMARK_CASE_TOOL_SRCS) src/benchmark_cases.h src/grid_planner.h
 	$(CXX) $(CXXFLAGS) -I src $(BENCHMARK_CASE_TOOL_SRCS) -o $(BENCHMARK_CASE_TOOL_TARGET) $(LDFLAGS)
 
-$(ANIMATION_TARGET): $(ANIMATION_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/greedy_repair.h src/solution_snapshot.h
+$(ANIMATION_TARGET): $(ANIMATION_SRCS) src/benchmark_cases.h src/grid_planner.h src/grid_renderer.h src/collision_detector.h src/constraints.h src/a_star.h src/time_expanded_bfs.h src/bitset_wavefront.h src/greedy_repair.h src/parallel_greedy_repair.h src/solution_snapshot.h
 	$(CXX) $(CXXFLAGS) -I src $(ANIMATION_SRCS) -o $(ANIMATION_TARGET) $(LDFLAGS)
 
 run: $(TARGET)
@@ -281,6 +281,10 @@ svg_abundant_128_seq: $(BENCHMARK_TARGET_SEQ)
 animate_small_32: $(ANIMATION_TARGET)
 	mkdir -p $(BENCHMARK_SVG_DIR)/small_32
 	./$(ANIMATION_TARGET) small_32 $(BENCHMARK_SVG_DIR)/small_32/small_32_animation.svg $(THREAD_ARGS)
+
+animate_wide_1024: $(ANIMATION_TARGET)
+	mkdir -p $(BENCHMARK_SVG_DIR)/wide_1024
+	./$(ANIMATION_TARGET) wide_1024 $(BENCHMARK_SVG_DIR)/wide_1024/wide_1024_animation.svg $(THREAD_ARGS)
 
 clean:
 	rm -f $(TARGET) $(TEST_TARGET) $(BENCHMARK_TARGET) $(BENCHMARK_TARGET_SEQ) $(BENCHMARK_CASE_TOOL_TARGET) $(ANIMATION_TARGET)

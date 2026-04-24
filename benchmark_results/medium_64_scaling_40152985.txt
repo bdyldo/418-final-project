@@ -1,7 +1,0 @@
-medium_64 scaling run
-job_id=40152985
-host=r198.ib.bridges2.psc.edu
-cpus_per_task=128
-thread_counts=1 2 4 8 16 32 64 128
-
-=== medium_64 with N=1 ===

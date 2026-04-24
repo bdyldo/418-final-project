@@ -1,3 +1,0 @@
-Building benchmark target...
-g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/greedy_repair.cpp -o benchmark_runner  -fopenmp  -lstdc++fs
-slurmstepd: error: *** JOB 38796789 ON r199 CANCELLED AT 2026-04-11T16:07:33 ***

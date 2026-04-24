@@ -1,7 +1,10 @@
 #include "a_star.h"
+#include "bitset_wavefront.h"
 #include "collision_detector.h"
 #include "greedy_repair.h"
 #include "grid_planner.h"
+#include "parallel_greedy_repair.h"
+#include "time_expanded_bfs.h"
 
 #include <exception>
 #include <iostream>
@@ -146,6 +149,74 @@ void testAStarRespectsVertexConstraint() {
   require(path->back() == Point{0, 2}, "a_star_constraint: wrong goal");
 }
 
+void testTimeExpandedBFSFindsShortestPathWithoutConstraints() {
+  const Robot robot = {1, {0, 0}, {2, 2}, {}};
+  TimeExpandedBFSPlanner planner(3, 3);
+  const auto path = planner.findPath(robot, {});
+
+  require(path.has_value(), "time_expanded_bfs_shortest_path: expected a path");
+  require(path->front() == Point{0, 0},
+          "time_expanded_bfs_shortest_path: wrong start");
+  require(path->back() == Point{2, 2},
+          "time_expanded_bfs_shortest_path: wrong goal");
+  require(path->size() == 5,
+          "time_expanded_bfs_shortest_path: wrong shortest path length");
+}
+
+void testTimeExpandedBFSRespectsVertexConstraint() {
+  const Robot robot = {1, {0, 0}, {0, 2}, {}};
+  const std::vector<Constraint> constraints = {
+      {ConstraintType::Vertex, 1, 1, {0, 1}, {0, 1}, {0, 1}},
+  };
+
+  TimeExpandedBFSPlanner planner(2, 3);
+  const auto path = planner.findPath(robot, constraints);
+
+  require(path.has_value(), "time_expanded_bfs_constraint: expected a path");
+  require(path->size() == 4,
+          "time_expanded_bfs_constraint: expected a delayed path");
+  require((*path)[0] == Point{0, 0},
+          "time_expanded_bfs_constraint: wrong start");
+  require((*path)[1] == Point{0, 0},
+          "time_expanded_bfs_constraint: expected wait to avoid constraint");
+  require(path->back() == Point{0, 2},
+          "time_expanded_bfs_constraint: wrong goal");
+}
+
+void testBitsetWavefrontFindsShortestPathWithoutConstraints() {
+  const Robot robot = {1, {0, 0}, {2, 2}, {}};
+  BitsetWavefrontPlanner planner(3, 3);
+  const auto path = planner.findPath(robot, {});
+
+  require(path.has_value(), "bitset_wavefront_shortest_path: expected a path");
+  require(path->front() == Point{0, 0},
+          "bitset_wavefront_shortest_path: wrong start");
+  require(path->back() == Point{2, 2},
+          "bitset_wavefront_shortest_path: wrong goal");
+  require(path->size() == 5,
+          "bitset_wavefront_shortest_path: wrong shortest path length");
+}
+
+void testBitsetWavefrontRespectsVertexConstraint() {
+  const Robot robot = {1, {0, 0}, {0, 2}, {}};
+  const std::vector<Constraint> constraints = {
+      {ConstraintType::Vertex, 1, 1, {0, 1}, {0, 1}, {0, 1}},
+  };
+
+  BitsetWavefrontPlanner planner(2, 3);
+  const auto path = planner.findPath(robot, constraints);
+
+  require(path.has_value(), "bitset_wavefront_constraint: expected a path");
+  require(path->size() == 4,
+          "bitset_wavefront_constraint: expected a delayed path");
+  require((*path)[0] == Point{0, 0},
+          "bitset_wavefront_constraint: wrong start");
+  require((*path)[1] == Point{0, 0},
+          "bitset_wavefront_constraint: expected wait to avoid constraint");
+  require(path->back() == Point{0, 2},
+          "bitset_wavefront_constraint: wrong goal");
+}
+
 void testGreedyRepairResolvesSimpleSwap() {
   std::vector<Robot> robots = {
       {1, {0, 0}, {0, 1}, {}},
@@ -195,6 +266,27 @@ void testGreedyRepairBatchesDisjointConflicts() {
           "greedy_async: expected at least one committed repair");
 }
 
+void testParallelGreedyRepairResolvesSimpleSwap() {
+  std::vector<Robot> robots = {
+      {1, {0, 0}, {0, 1}, {}},
+      {2, {0, 1}, {0, 0}, {}},
+  };
+
+  ParallelGreedyRepairPlanner planner(2, 2, 10000, 8, 8, 1);
+  GreedyRepairStats stats;
+  const auto solution = planner.findPaths(robots, &stats);
+
+  require(solution.has_value(), "parallel_greedy_simple_swap: expected a solution");
+
+  CollisionDetector detector;
+  const std::vector<Collision> collisions =
+      detector.detectCollisions(*solution);
+  require(collisions.empty(),
+          "parallel_greedy_simple_swap: solution still has collisions");
+  require(stats.candidate_repairs_evaluated > 0,
+          "parallel_greedy_simple_swap: expected candidate repair work");
+}
+
 void runTest(void (*test_fn)(), const std::string& test_name) {
   test_fn();
   std::cout << "[PASS] " << test_name << "\n";
@@ -213,9 +305,19 @@ int main() {
             "a_star_shortest_path");
     runTest(testAStarRespectsVertexConstraint,
             "a_star_constraint");
+    runTest(testTimeExpandedBFSFindsShortestPathWithoutConstraints,
+            "time_expanded_bfs_shortest_path");
+    runTest(testTimeExpandedBFSRespectsVertexConstraint,
+            "time_expanded_bfs_constraint");
+    runTest(testBitsetWavefrontFindsShortestPathWithoutConstraints,
+            "bitset_wavefront_shortest_path");
+    runTest(testBitsetWavefrontRespectsVertexConstraint,
+            "bitset_wavefront_constraint");
     runTest(testGreedyRepairResolvesSimpleSwap, "greedy_simple_swap");
     runTest(testGreedyRepairBatchesDisjointConflicts,
             "greedy_async_multi_conflict");
+    runTest(testParallelGreedyRepairResolvesSimpleSwap,
+            "parallel_greedy_simple_swap");
   } catch (const std::exception& error) {
     std::cerr << "[FAIL] " << error.what() << "\n";
     return 1;

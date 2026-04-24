@@ -31,7 +31,7 @@ int parsePositiveInt(const char* value, const std::string& name) {
 
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
-            << " <few_8|few_16|few_32|small_32|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
+            << " <few_8|few_16|few_32|small_32|small_64|wide_1024|medium_16|medium_32|medium_64|abundant_64|abundant_128>"
             << " [output.svg] [--force-resolve] [-N threads]\n";
 }
 

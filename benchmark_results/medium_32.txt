@@ -1,6 +1,0 @@
-medium_32
-  Grid: 128x128 | Robots: 32 | Planner: greedy-batch | Top-K disjoint conflicts: 8 | Workers: 1
-  Total cost: 5200 | Total time: 238 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 14287.691 ms
-  Repair iterations: 84 | Conflicts considered: 91 | Candidate repairs: 182
-  A* calls: 214 | Successful repairs: 90 | Failed repairs: 0 | Stagnant repairs: 77
-  States expanded: 4087919 | States generated: 9142956

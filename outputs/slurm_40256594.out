@@ -1,0 +1,67 @@
+Building benchmark target...
+g++ -std=c++17 -Wall -Wextra -pedantic -O2  -fopenmp -I src benchmarks/benchmark_runner.cpp src/benchmark_cases.cpp src/grid_planner.cpp src/grid_renderer.cpp src/collision_detector.cpp src/a_star.cpp src/time_expanded_bfs.cpp src/bitset_wavefront.cpp src/greedy_repair.cpp src/parallel_greedy_repair.cpp src/solution_snapshot.cpp -o benchmark_runner  -fopenmp  -lstdc++fs
+=== medium_64 bitset with N=1 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 1
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 190.538 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=2 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 2
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 177.753 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=4 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 4
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 169.105 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=8 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 8
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 227.486 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=16 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 16
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 249.232 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=32 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 32
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 255.915 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=64 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 64
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 316.598 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+=== medium_64 bitset with N=128 ===
+medium_64
+  Grid: 128x128 | Robots: 64 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 128
+  Total cost: 7800 | Total time: 140 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 505.703 ms
+  Independent planning collisions: 199 | Low-level searches: 64
+  States expanded: 39490079 | States generated: 40288051
+  Solution snapshot: benchmark_solutions/medium_64_bitset_solution.txt
+
+Combined results written to benchmark_results/medium_64_bitset_scaling_40256594.txt

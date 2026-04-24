@@ -1,0 +1,137 @@
+wide_1024 bitset N=64 perf summary
+==================================
+
+Workload
+--------
+Command profiled:
+  env OMP_NUM_THREADS=64 OMP_PROC_BIND=true OMP_PLACES=cores \
+    ./benchmark_runner wide_1024 --planner bitset -N 64
+
+Profiler command:
+  perf stat -d env OMP_NUM_THREADS=64 OMP_PROC_BIND=true OMP_PLACES=cores \
+    ./benchmark_runner wide_1024 --planner bitset -N 64
+
+
+Benchmark result under profiling
+--------------------------------
+Planner: bitset-wavefront
+Mode: independent-low-level
+Workers requested: 64
+
+Runtime reported by benchmark under perf:
+  484.123 s
+
+Reference runtime from batch scaling run:
+  6.097 s
+  Source: benchmark_results/wide_1024_bitset_scaling_40256648.txt
+
+Important caveat:
+  The perf run was executed on a heavily loaded shared host, not inside the
+  clean batch-scaling environment. The wall-clock runtime under perf is
+  therefore not a trustworthy benchmark number. The counter data below is
+  still useful for diagnosing the bottleneck.
+
+Search statistics:
+  Low-level searches:    1024
+  States expanded:       13891217770
+  States generated:      13951794563
+  Independent collisions: 9973
+
+
+perf stat highlights
+--------------------
+task-clock:u:                 463364.16 ms
+CPUs utilized:                0.955
+page faults:u:                40179249
+cycles:u:                     161355587851
+effective frequency:          0.348 GHz
+instructions:u:               410560007517
+IPC:                          2.54
+frontend stalled cycles:      1.39%
+backend stalled cycles:       42.12%
+branch misses:                0.23%
+L1-dcache load misses:        3.84%
+time elapsed:                 485.205 s
+user time:                    49.054 s
+sys time:                     379.196 s
+
+
+Main interpretation
+-------------------
+1. The strongest signal is not low IPC. IPC is actually high at 2.54. The
+   bigger problem is the enormous kernel-side memory cost:
+   - 40.2 million page faults
+   - 379.2 seconds of system time
+   - less than 1 CPU utilized on average
+
+2. For wide_1024, robot-level bitset parallelism is active. In the benchmark
+   harness, bitset switches to outer robot parallelism when:
+     robot_count >= 4 * rows
+   Here that is:
+     1024 >= 4 * 128
+   so the N=64 run executes many independent robot searches concurrently.
+
+3. Each robot search allocates large dense structures:
+   - buildConstraintIndex() is called twice per search
+   - each ConstraintIndex contains 5 dense bitset arrays over
+     (horizon + 1) * rows * chunk_count words
+   - parent_move stores one byte per (time, row, col)
+
+4. That means the wide_1024 N=64 run is not compute-bound first. It becomes
+   memory-allocation / page-zeroing / paging-pressure bound. The perf data
+   matches this exactly:
+   - very high page-fault count
+   - system time far larger than user time
+   - backend stalls much larger than frontend stalls
+
+5. This explains why scaling improves nicely up to N=32 in the batch run, then
+   flattens and bumps upward at N=64. By that point, adding more concurrent
+   robot searches mostly increases pressure on memory bandwidth and the kernel's
+   page management rather than increasing useful compute throughput.
+
+
+Code evidence
+-------------
+Robot-level parallelism in the benchmark harness:
+  benchmarks/benchmark_runner.cpp
+  - outer threshold: lines 199-201
+  - outer OpenMP loop: lines 247-253
+
+Double dense constraint-index build in bitset search:
+  src/bitset_wavefront.cpp
+  - preliminary and final index builds: lines 166-172
+
+Dense per-search storage allocations:
+  src/bitset_wavefront.cpp
+  - current/next/masks/parent_move: lines 192-200
+  - dense ConstraintIndex arrays: lines 367-373
+
+
+Why N=64 regressed
+------------------
+The N=64 slowdown is best explained by crossing a memory-pressure threshold:
+more robot searches are in flight at once, so more dense per-search arrays are
+being allocated and touched concurrently. Once that happens, the run stops
+scaling on compute and starts paying heavily for page faults, zero-fill, kernel
+memory work, and shared-memory bandwidth contention.
+
+The fact that the batch N=128 run recovered somewhat relative to N=64 suggests
+that the exact N=64 bump is partly node/run noise. The broader conclusion is
+still the same: the curve starts saturating after N=32 because memory-system
+pressure dominates.
+
+
+Best next improvements
+----------------------
+1. Add a no-constraints fast path for bitset benchmarks so empty-constraint
+   runs skip both dense buildConstraintIndex() calls entirely.
+
+2. Avoid keeping both the preliminary and final dense ConstraintIndex objects
+   live at the same time, or switch to iterative horizon growth instead of
+   "build twice."
+
+3. Reuse or pool per-search storage per worker thread instead of allocating
+   fresh large arrays for every robot search.
+
+4. Cap outer robot parallelism for wide_1024 below the point where memory
+   pressure dominates, likely closer to 32 than 64 on this workload.

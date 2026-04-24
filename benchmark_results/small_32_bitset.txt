@@ -1,0 +1,6 @@
+small_32
+  Grid: 10x30 | Robots: 32 | Planner: bitset-wavefront | Mode: independent-low-level | Workers: 256
+  Total cost: 876 | Total time: 36 | Final robot wait time: 0 | Final robot detours: 0 | Runtime: 1.325 ms
+  Independent planning collisions: 152 | Low-level searches: 32
+  States expanded: 115800 | States generated: 124556
+  Solution snapshot: benchmark_solutions/small_32_bitset_solution.txt
