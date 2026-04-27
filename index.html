@@ -4,7 +4,164 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>15-418 Final Project</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: #222;
+    background: #fafafa;
+  }
+
+  .hero {
+    background: #1f2937;
+    color: white;
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+  }
+
+  .container {
+    width: min(960px, 92%);
+    margin: 0 auto;
+  }
+
+  h1, h2, h3, h4 {
+    margin-top: 0;
+  }
+
+  section {
+    background: white;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  ul, ol {
+    padding-left: 1.4rem;
+  }
+
+  a {
+    color: #2563eb;
+  }
+
+  .subtitle {
+    opacity: 0.92;
+  }
+
+  pre {
+    background: #f3f4f6;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+  }
+
+  code {
+    background: #f3f4f6;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+  }
+
+  pre code {
+    padding: 0;
+    background: transparent;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.75rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db;
+    padding: 0.6rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f3f4f6;
+  }
+
+  td.num, th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .report-nav {
+    background: white;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  .report-nav ul {
+    columns: 2;
+    margin-bottom: 0;
+  }
+
+  .abstract-box {
+    background: #f3f4f6;
+    border-left: 4px solid #1f2937;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+  }
+
+  .back-link {
+    margin-bottom: 1rem;
+  }
+
+  .note {
+    color: #666;
+    font-size: 0.95rem;
+  }
+
+  .references li {
+    margin-bottom: 0.5rem;
+  }
+
+  @media print {
+    body {
+      background: white;
+    }
+
+    .hero, .report-nav, .back-link {
+      display: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: none;
+    }
+
+    section {
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0;
+      margin-bottom: 1.25rem;
+      break-inside: avoid;
+    }
+
+    table, pre {
+      break-inside: avoid;
+    }
+
+    h2, h3 {
+      break-after: avoid;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
+</style>
 </head>
 <body>
   <header class="hero">
