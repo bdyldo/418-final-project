@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Final Report | Parallel Multi-Agent Path Planning</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .report-title {
+      margin-bottom: 0.25rem;
+    }
+
+    .report-subtitle {
+      margin-top: 0;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .report-nav {
+      margin: 1.5rem 0 2rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .report-nav ul {
+      margin-bottom: 0;
+      columns: 2;
+    }
+
+    .abstract-box {
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0 2rem;
+      border-left: 4px solid #444;
+      background: #f7f7f7;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.75rem;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid #d6d6d6;
+      padding: 0.55rem 0.65rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 700;
+    }
+
+    td.num, th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    pre {
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    code {
+      background: #f2f2f2;
+      padding: 0.1rem 0.25rem;
+      border-radius: 4px;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+    }
+
+    .note {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .references li {
+      margin-bottom: 0.5rem;
+    }
+
+    @media print {
+      header.hero, .report-nav, .back-link {
+        display: none;
+      }
+
+      body {
+        background: white;
+      }
+
+      main.container {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      h2, h3 {
+        break-after: avoid;
+      }
+
+      table, pre {
+        break-inside: avoid;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>15-418 / 15-618 Final Project</h1>
+      <h2>Parallel Multi-Agent Path Planning for Coordinated Robotic Manipulation</h2>
+      <p class="subtitle">
+        Team Members: Dylan Sun (bdsun), Jongsun Park (jongsunp)
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+    <p class="back-link"><a href="index.html">&larr; Back to project homepage</a></p>
+
+    <h1 class="report-title">Final Report</h1>
+    <h2 class="report-subtitle">Parallel Multi-Agent Path Finding Through Greedy Repair, Speculative Search, and Bitset Wavefront Planning</h2>
+
+    <nav class="report-nav">
+      <strong>Contents</strong>
+      <ul>
+        <li><a href="#summary">Summary</a></li>
+        <li><a href="#background">Background</a></li>
+        <li><a href="#approach">Approach</a></li>
+        <li><a href="#experimental-setup">Experimental Setup</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#discussion">Discussion</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </nav>
+
+    <section id="summary">
+      <h2>Summary</h2>
+      <p class="abstract-box">
+        We implemented and evaluated several parallel approaches for solving dense multi-agent path finding (MAPF) instances. Our target workload was <code>small_32</code>, a 10-by-30 grid with 32 robots. This case was small enough to run repeatedly, but dense enough to create many robot conflicts, making it useful for studying collision resolution and repair parallelism. Our implementation evolved through three major versions: a greedy repair solver with batched disjoint conflict repair, a parallel speculative beam-search-style repair solver, and a bitset wavefront low-level planner integrated into the MAPF repair loop. The best multicore scaling came from the greedy-batch version, which improved from 156.3 seconds at 1 thread to 33.3 seconds at 16 threads, but then plateaued. The best solution quality came from the parallel speculative beam-8 planner, which reduced total cost from 1109 to 1019 and makespan from 39 to 36. The best single-thread runtime came from the bitset wavefront MAPF planner, which solved <code>small_32</code> in 15.5 seconds. Overall, our project shows that MAPF repair exposes some parallelism, but the amount of useful work per repair round is limited by conflict structure, synchronization overhead, and the granularity of low-level search.
+      </p>
+      <p>
+        The project was evaluated on PSC Bridges-2 nodes, including <code>r009.ib.bridges2.psc.edu</code> and <code>br014.ib.bridges2.psc.edu</code>.
+      </p>
+    </section>
+
+    <section id="background">
+      <h2>Background</h2>
+      <p>
+        Multi-agent path finding is the problem of routing multiple agents from start locations to goal locations while avoiding collisions. In our project, the agents are robots moving on a grid. The input is a grid map and a set of robot start and goal positions. The output is a path for each robot such that no two robots occupy the same cell at the same timestep and no two robots traverse the same edge in opposite directions at the same timestep.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Data structure</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Grid</td><td>Represents free and blocked cells.</td></tr>
+          <tr><td>Robot path</td><td>Sequence of positions over time for one robot.</td></tr>
+          <tr><td>Collision list</td><td>Current vertex and edge conflicts between robot paths.</td></tr>
+          <tr><td>Constraint set</td><td>Restrictions added during repair to prevent repeated collisions.</td></tr>
+          <tr><td>Low-level planner state</td><td>Search state for replanning one robot under constraints.</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        There are two main types of collisions. A vertex collision occurs when two robots occupy the same cell at the same timestep. An edge collision occurs when two robots swap positions across the same edge at the same timestep. The solver repeatedly detects these collisions and repairs one or more robot paths until the full set of paths is collision-free.
+      </p>
+      <p>
+        The expensive part of the computation is the repeated repair process. Each repair round requires collision detection, choosing conflicts to repair, generating constraints, replanning one or more robots, scoring candidate repairs, and merging accepted path changes back into the global solution. The low-level replanning step is especially expensive because it may call A* or another shortest-path routine many thousands of times. In the greedy-batch baseline for <code>small_32</code>, the solver made 58,760 A* calls and expanded 158,852,792 states.
+      </p>
+      <p>
+        The key parallelization challenge is that MAPF is not simply independent single-agent path planning. Each robot path interacts with other robot paths through collisions. Therefore, the solver must expose parallel work while still preserving global collision resolution semantics. We explored high-level repair parallelism, where multiple candidate repairs are evaluated in parallel, and low-level search parallelism, where the single-agent planner is made more regular using bitset wavefront propagation.
+      </p>
+    </section>
+
+    <section id="approach">
+      <h2>Approach</h2>
+
+      <h3>Initial CBS-style direction</h3>
+      <p>
+        Our early implementation used standard MAPF components: collision detection, A* as the low-level single-agent planner, and CBS-style conflict handling. CBS, or Conflict-Based Search, maintains a high-level constraint tree. When a collision is found, CBS branches by adding a constraint to one robot in one branch and to the other robot in another branch. This approach is exact, but the branching factor becomes expensive when many robots interact.
+      </p>
+      <p>The early Git history records this stage as an implementation with A* and CBS that only worked on very small cases:</p>
+      <pre><code>6ac564b Added A* and CBS with benchmark testcases, only works for few_8</code></pre>
+      <p>
+        The main lesson from this stage was that exact CBS was not practical for our target benchmark regime. It worked on very small cases, but the number of high-level branches became too large as the number of robots increased. This motivated moving to a greedy repair approach: keep MAPF collision detection and repair semantics, but avoid maintaining the full CBS constraint tree.
+      </p>
+
+      <h3>Stage 1: Greedy repair with batched disjoint conflict repair</h3>
+      <p>
+        The first practical solver was a greedy repair algorithm. The solver begins by planning an initial path for every robot. It then repeatedly detects collisions and repairs selected conflicts by adding constraints and replanning.
+      </p>
+      <p>
+        The key idea was to select multiple robot-disjoint conflicts in each iteration. If two conflicts involve disjoint sets of robots, then repair candidates for those conflicts can be evaluated independently. This gives a natural OpenMP parallel loop over repair candidates.
+      </p>
+      <ol>
+        <li>Detect all current vertex and edge collisions.</li>
+        <li>Sort collisions by earliest timestep.</li>
+        <li>Select up to <code>top_k_conflicts</code> conflicts, requiring selected conflicts to be robot-disjoint.</li>
+        <li>For each selected conflict, generate two possible repair constraints, one for each robot in the conflict.</li>
+        <li>Replan the constrained robot with A*.</li>
+        <li>Score each candidate by remaining collision count and total path cost.</li>
+        <li>Keep the best candidate for each conflict.</li>
+        <li>Merge compatible repaired paths into the current solution.</li>
+        <li>Repeat until no collisions remain.</li>
+      </ol>
+      <p>
+        This maps to the machine by assigning independent repair candidates to OpenMP worker threads. Each worker evaluates a candidate repair by running low-level A* and computing the resulting collision/cost score. The global solution is only updated after candidate evaluation, so the parallel work is mostly in candidate generation and replanning.
+      </p>
+      <p>
+        The main advantage of this design is that it exposes parallel work without abandoning the central MAPF collision-resolution problem. The main disadvantage is that the amount of parallelism is bounded by the number of disjoint conflicts. With 32 robots, there can be at most 16 robot-disjoint pairwise conflicts in one repair round, and each conflict gives at most two direct repair candidates. Therefore, this design cannot naturally keep 64 or 128 threads busy on <code>small_32</code>.
+      </p>
+
+      <h3>Stage 2: Parallel speculative repair with beam merge</h3>
+      <p>
+        The greedy-batch solver improved runtime, but it still made many stagnant repairs and required thousands of repair iterations. On <code>small_32</code>, the greedy-batch solver needed 4,914 repair iterations, considered 29,364 conflicts, generated 58,728 candidate repairs, and made 58,760 A* calls.
+      </p>
+      <p>
+        The next approach was a parallel speculative planner. Instead of only committing the locally best repair from a small set of disjoint conflicts, this solver considered a larger conflict pool and kept a beam of promising candidates. The main benchmark used a conflict pool of 128 and beam width 8.
+      </p>
+      <ul>
+        <li>Use a larger conflict pool.</li>
+        <li>Evaluate speculative repair candidates in parallel.</li>
+        <li>Keep multiple promising candidates rather than only one greedy choice.</li>
+        <li>Merge candidate repairs while avoiding duplicate constraints and avoiding candidates that modify already-changed robots.</li>
+      </ul>
+      <p>
+        The goal was to improve the search trajectory. If the solver makes better repair choices, it may need fewer high-level iterations, fewer low-level searches, and fewer total state expansions. This worked algorithmically: the speculative planner reduced repair iterations from 4,914 to 1,628 and low-level searches from 58,760 to 21,124 on <code>small_32</code>. It also improved solution quality, lowering total cost from 1109 to 1019 and makespan from 39 to 36.
+      </p>
+
+      <h3>Stage 3: Bitset wavefront low-level planning</h3>
+      <p>
+        Profiling showed that useful application work was still dominated by low-level A* search and its supporting data structures. To address this, we implemented a bitset wavefront low-level planner. Instead of representing the frontier with irregular A* priority queues and hash tables, the bitset planner represents reachable cells at each timestep as dense bitsets.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Idea</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Pack grid cells into <code>uint64_t</code> words</td><td>Exploit 64-way bit-level parallelism inside one machine word.</td></tr>
+          <tr><td>Use shift/AND/OR operations</td><td>Propagate frontier states efficiently.</td></tr>
+          <tr><td>Pre-index constraints into masks</td><td>Apply vertex and edge constraints with bit operations.</td></tr>
+          <tr><td>Store compact parent moves</td><td>Reconstruct a valid path after reaching the goal.</td></tr>
+          <tr><td>Use dense arrays</td><td>Improve locality compared with hash-table-heavy A*.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        This changes the low-level planner from irregular graph search into a more regular wavefront computation. In parallel systems terms, this improves spatial locality, reduces allocation traffic, and exposes data-parallel work over rows or bit chunks. This was the most successful constant-factor optimization. On <code>small_32</code>, the bitset MAPF planner solved the instance in 15.5 seconds on one thread, compared with 156.3 seconds for greedy-batch and 38.4 seconds for parallel beam-8.
+      </p>
+
+      <h3>Abandoned suffix A* optimization</h3>
+      <p>
+        We also tried a suffix A* optimization. The idea was that if a conflict occurs at time <code>t</code>, the solver could keep the robot's prefix path before <code>t</code> and only replan the suffix from around the conflict to the goal. In practice, this did not remain in the final implementation. A conservative version compared suffix A* against a full replan and kept the better candidate, but that often required running both searches, increasing total work. A suffix-first version with fallback-on-failure avoided always running both searches, but it accepted locally valid suffix repairs that were poor choices for the global greedy repair loop. Because this experiment was reverted and no durable <code>small_32</code> benchmark file remains in the current repo, we treat it as an attempted optimization rather than a main measured result.
+      </p>
+    </section>
+
+    <section id="experimental-setup">
+      <h2>Experimental Setup</h2>
+      <p>The primary benchmark in this report is <code>small_32</code>:</p>
+      <pre><code>Grid: 10 x 30
+Robots: 32</code></pre>
+      <p>
+        This workload was chosen because it is small enough to run repeatedly, but dense enough to create many conflicts. We measured wall-clock runtime, total solution cost, makespan, repair iterations, conflicts considered, candidate repairs, low-level searches or A* calls, successful repairs, stagnant repairs, states expanded, and states generated.
+      </p>
+      <p>
+        The greedy-batch scaling run used thread counts <code>1, 2, 4, 8, 16, 32, 64, 128</code> on <code>r009.ib.bridges2.psc.edu</code> with <code>cpus_per_task=128</code>. The parallel beam-8 and bitset-wavefront runs ran on <code>br014.ib.bridges2.psc.edu</code>. The beam-8 run used thread counts 1 through 128, while the bitset run used thread counts 1, 2, 4, and 8.
+      </p>
+      <p>We profiled the parallel beam-8 planner at 16 threads using <code>perf record</code>, <code>perf stat -d</code>, and <code>perf report</code>:</p>
+      <pre><code>./benchmark_runner small_32 --planner parallel --beam-width 8 -N 16</code></pre>
+    </section>
+
+    <section id="results">
+      <h2>Results</h2>
+
+      <h3>Greedy-batch scaling</h3>
+      <p>
+        The greedy-batch solver showed useful speedup up to 16 threads. Runtime improved from 156,346.908 ms at 1 thread to 33,336.595 ms at 16 threads. This is approximately a 4.69x speedup.
+      </p>
+      <table>
+        <thead>
+          <tr><th class="num">Threads</th><th class="num">Runtime ms</th><th class="num">Speedup vs 1 thread</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="num">156346.908</td><td class="num">1.00x</td></tr>
+          <tr><td class="num">2</td><td class="num">88871.642</td><td class="num">1.76x</td></tr>
+          <tr><td class="num">4</td><td class="num">53814.295</td><td class="num">2.91x</td></tr>
+          <tr><td class="num">8</td><td class="num">38351.059</td><td class="num">4.08x</td></tr>
+          <tr><td class="num">16</td><td class="num">33336.595</td><td class="num">4.69x</td></tr>
+          <tr><td class="num">32</td><td class="num">33572.528</td><td class="num">4.66x</td></tr>
+          <tr><td class="num">64</td><td class="num">33994.611</td><td class="num">4.60x</td></tr>
+          <tr><td class="num">128</td><td class="num">34578.693</td><td class="num">4.52x</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The solution quality and search statistics were identical across all thread counts. Every run produced total cost 1109, makespan 39, 4,914 repair iterations, 58,760 A* calls, 158,852,792 states expanded, and 248,070,127 states generated. This means the thread count did not change the algorithmic trajectory. The same repair decisions and same amount of search work occurred in every run. The only difference was how that fixed work was scheduled across threads.
+      </p>
+
+      <h3>Parallel speculative beam-8 results</h3>
+      <p>
+        The parallel speculative beam-8 planner was algorithmically better than greedy-batch, but worse as a multicore scaling strategy.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Planner</th><th class="num">Runtime ms</th><th class="num">Cost</th><th class="num">Makespan</th><th class="num">Repair iterations</th><th class="num">Low-level searches</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Greedy-batch, N=1</td><td class="num">156346.908</td><td class="num">1109</td><td class="num">39</td><td class="num">4914</td><td class="num">58760</td></tr>
+          <tr><td>Beam-8, N=1</td><td class="num">38441.430</td><td class="num">1019</td><td class="num">36</td><td class="num">1628</td><td class="num">21124</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The beam planner reduced repair iterations by about 66.9% and low-level searches by about 64.0%. It also reduced state expansions from 158,852,792 to 30,946,123.
+      </p>
+      <table>
+        <thead>
+          <tr><th class="num">Threads</th><th class="num">Runtime ms</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="num">38441.430</td></tr>
+          <tr><td class="num">2</td><td class="num">48049.935</td></tr>
+          <tr><td class="num">4</td><td class="num">57529.901</td></tr>
+          <tr><td class="num">8</td><td class="num">81349.595</td></tr>
+          <tr><td class="num">16</td><td class="num">81924.746</td></tr>
+          <tr><td class="num">32</td><td class="num">84204.047</td></tr>
+          <tr><td class="num">64</td><td class="num">81427.964</td></tr>
+          <tr><td class="num">128</td><td class="num">80488.026</td></tr>
+        </tbody>
+      </table>
+      <p>
+        This result shows a distinction between algorithmic improvement and parallel speedup. Beam-8 made better repair choices and greatly reduced total search work. But its OpenMP implementation did not keep more cores busy.
+      </p>
+
+      <h3>Beam-8 profiling</h3>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th class="num">Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Runtime under profiling</td><td class="num">90.461 s</td></tr>
+          <tr><td>CPUs utilized</td><td class="num">0.935</td></tr>
+          <tr><td>IPC</td><td class="num">0.79</td></tr>
+          <tr><td>Backend stalled cycles</td><td class="num">63.71%</td></tr>
+          <tr><td>Frontend stalled cycles</td><td class="num">0.93%</td></tr>
+          <tr><td>Page faults</td><td class="num">155,158</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead>
+          <tr><th>Hotspot</th><th class="num">Sample overhead</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>libgomp</code> address 1</td><td class="num">27.14%</td></tr>
+          <tr><td><code>libgomp</code> address 2</td><td class="num">24.38%</td></tr>
+          <tr><td><code>AStarPlanner::findPath</code></td><td class="num">9.22%</td></tr>
+          <tr><td>SearchState/SearchCost hash-table lookup</td><td class="num">5.41%</td></tr>
+          <tr><td><code>_int_malloc</code></td><td class="num">2.54%</td></tr>
+          <tr><td>SearchState/SearchCost map <code>operator[]</code></td><td class="num">2.49%</td></tr>
+          <tr><td><code>_int_free</code></td><td class="num">2.23%</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Even though the run requested 16 OpenMP workers, the process averaged less than one CPU utilized. The hot <code>libgomp</code> addresses were consistent with a pause/compare spin loop, which indicates barrier or synchronization waiting rather than useful application work. This rules out one simple explanation: the bottleneck was not mainly a single serial merge function or collision detection. The dominant issue was that each repair iteration exposed too little independent work, while OpenMP synchronization and A* internals remained expensive.
+      </p>
+
+      <h3>Bitset wavefront results</h3>
+      <p>The bitset-wavefront MAPF planner produced the best single-thread runtime.</p>
+      <table>
+        <thead>
+          <tr><th>Planner</th><th class="num">Threads</th><th class="num">Runtime ms</th><th class="num">Cost</th><th class="num">Makespan</th><th class="num">Repair iterations</th><th class="num">Low-level searches</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Greedy-batch</td><td class="num">1</td><td class="num">156346.908</td><td class="num">1109</td><td class="num">39</td><td class="num">4914</td><td class="num">58760</td></tr>
+          <tr><td>Beam-8</td><td class="num">1</td><td class="num">38441.430</td><td class="num">1019</td><td class="num">36</td><td class="num">1628</td><td class="num">21124</td></tr>
+          <tr><td>Bitset-wavefront MAPF</td><td class="num">1</td><td class="num">15477.742</td><td class="num">1060</td><td class="num">37</td><td class="num">3424</td><td class="num">39024</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The bitset version was about 10.1x faster than greedy-batch at 1 thread and about 2.5x faster than beam-8 at 1 thread. It also improved solution quality relative to greedy-batch, reducing cost from 1109 to 1060 and makespan from 39 to 37. However, it did not beat beam-8 on solution quality: beam-8 achieved cost 1019 and makespan 36.
+      </p>
+      <table>
+        <thead>
+          <tr><th class="num">Threads</th><th class="num">Runtime ms</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="num">15477.742</td></tr>
+          <tr><td class="num">2</td><td class="num">19803.680</td></tr>
+          <tr><td class="num">4</td><td class="num">33458.026</td></tr>
+          <tr><td class="num">8</td><td class="num">75979.855</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The likely reason is granularity. A 10-by-30 grid is too small for row-level or chunk-level bitset parallelism to amortize OpenMP overhead. Since each row fits in one 64-bit word, the low-level computation is already compact and efficient on one core. Adding threads introduces scheduling and synchronization costs without providing enough additional useful work.
+      </p>
+    </section>
+
+    <section id="discussion">
+      <h2>Discussion</h2>
+      <p>
+        The main lesson from this project is that parallelizing MAPF is not just a matter of adding OpenMP to the low-level planner or evaluating candidates in parallel. The structure of the MAPF repair loop strongly controls available parallelism.
+      </p>
+      <h3>Why greedy-batch scaled up to 16 threads</h3>
+      <p>
+        Greedy-batch scaled because it exposed independent repair candidates. For each selected robot-disjoint conflict, the solver could evaluate candidate constraints independently. This created useful parallel work and produced a 4.69x speedup at 16 threads. But the scaling plateaued because the number of independent repair tasks per round is naturally limited. With 32 robots, there cannot be hundreds of robot-disjoint conflict repairs in one iteration. Once the thread count exceeds the number of useful repair tasks, the extra threads mostly wait.
+      </p>
+      <h3>Why beam-8 improved quality but not scaling</h3>
+      <p>
+        Beam-8 made better decisions. It reduced the number of high-level repair iterations and low-level searches, which is why the 1-thread beam-8 run was much faster than the 1-thread greedy-batch run. However, better decision quality did not imply better parallel execution. Profiling showed that the 16-thread beam-8 run averaged only 0.935 CPUs utilized and spent more than half of sampled cycles in <code>libgomp</code> synchronization/spin-loop behavior.
+      </p>
+      <h3>Why bitset wavefront was the best single-thread result</h3>
+      <p>
+        The bitset planner attacked a different bottleneck: the cost of low-level A* search. A* uses priority queues, hash tables, dynamic allocation, and irregular memory access. Bitset wavefront planning improved this by replacing irregular search with dense bit operations. This gave a large constant-factor improvement, making the 1-thread bitset solver the fastest measured configuration.
+      </p>
+      <p>
+        But the bitset planner still lived inside the high-level MAPF repair loop. It did not remove the need for thousands of repair iterations and tens of thousands of low-level searches. On <code>small_32</code>, the grid was too small for the bitset kernel itself to expose much thread-level parallelism. Therefore, the bitset implementation improved per-search efficiency but did not create scalable multicore execution.
+      </p>
+      <h3>What limited speedup overall</h3>
+      <ul>
+        <li><strong>Limited repair-level parallelism:</strong> independent repair work is bounded by the number of robot-disjoint conflicts.</li>
+        <li><strong>Fine-grained synchronization:</strong> repeated repair rounds require frequent coordination between candidate evaluation and global merge.</li>
+        <li><strong>Irregular low-level search:</strong> A* spends time in hash tables, allocation, and priority queues.</li>
+        <li><strong>Small grid size for bitset threading:</strong> the 10-by-30 grid does not provide enough row/chunk-level work for many threads.</li>
+        <li><strong>Stagnant repairs:</strong> many accepted repairs do not immediately reduce collision count, showing that local greedy repair can spend work without direct immediate progress.</li>
+      </ul>
+    </section>
+
+    <section id="conclusion">
+      <h2>Conclusion</h2>
+      <p>
+        We implemented and evaluated three increasingly optimized MAPF solvers. The greedy-batch solver showed that repair-candidate parallelism can provide useful speedup, reaching about 4.7x speedup on <code>small_32</code> at 16 threads. The parallel speculative beam-8 solver showed that better repair choices can significantly reduce total search work and improve solution quality, but profiling revealed that it did not expose enough useful parallel work to keep many OpenMP threads busy. The bitset wavefront planner showed that low-level representation changes can produce large constant-factor gains by replacing irregular A* search with dense bit operations, producing the best single-thread runtime.
+      </p>
+      <p>
+        The final result is not perfect multicore scaling. Instead, the project demonstrates a more realistic parallel systems lesson: algorithmic structure determines available parallelism. MAPF collision repair has dependencies that limit coarse-grained parallelism, and small-grid low-level planning does not provide enough fine-grained work to compensate. Our best result was therefore a combination of algorithmic improvement and representation improvement, rather than simply using more threads.
+      </p>
+    </section>
+
+    <section id="references">
+      <h2>References</h2>
+      <ol class="references">
+        <li>Sharon, G., Stern, R., Felner, A., and Sturtevant, N. R. “Conflict-Based Search for Optimal Multi-Agent Pathfinding.”</li>
+        <li>Hart, P. E., Nilsson, N. J., and Raphael, B. “A Formal Basis for the Heuristic Determination of Minimum Cost Paths.”</li>
+        <li>OpenMP Architecture Review Board. <em>OpenMP Application Programming Interface.</em></li>
+        <li>Linux <code>perf</code> profiling tools.</li>
+        <li>Project benchmark files in <code>benchmark_results/</code>, especially <code>small_32_implementation_timeline_summary.txt</code>, <code>small_32_scaling_40176493.txt</code>, <code>small_32_parallel_beam8_scaling_20260424_084154.txt</code>, <code>small_32_bitset_scaling_20260424_083916.txt</code>, and <code>small_32_parallel_beam8_n16_perf_summary.txt</code>.</li>
+      </ol>
+    </section>
+
+    <section id="work-distribution">
+      <h2>Work Distribution</h2>
+      <p class="note">
+        The public webpage omits detailed private credit allocation. The Gradescope PDF version should include the final work distribution and credit split if required by the course staff.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
