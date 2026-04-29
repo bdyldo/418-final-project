@@ -245,8 +245,6 @@
       <p>
         Our early implementation used standard MAPF components: collision detection, A* as the low-level single-agent planner, and CBS-style conflict handling. CBS, or Conflict-Based Search, maintains a high-level constraint tree. When a collision is found, CBS branches by adding a constraint to one robot in one branch and to the other robot in another branch. This approach is exact, but the branching factor becomes expensive when many robots interact.
       </p>
-      <p>The early Git history records this stage as an implementation with A* and CBS that only worked on very small cases:</p>
-      <pre><code>6ac564b Added A* and CBS with benchmark testcases, only works for few_8</code></pre>
       <p>
         The main lesson from this stage was that exact CBS was not practical for our target benchmark regime. It worked on very small cases, but the number of high-level branches became too large as the number of robots increased. This motivated moving to a greedy repair approach: keep MAPF collision detection and repair semantics, but avoid maintaining the full CBS constraint tree.
       </p>
