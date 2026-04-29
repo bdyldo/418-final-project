@@ -308,7 +308,7 @@
         </tbody>
       </table>
       <p>
-        This changes the low-level planner from irregular graph search into a more regular wavefront computation. In parallel systems terms, this improves spatial locality, reduces allocation traffic, and exposes data-parallel work over rows or bit chunks. This was the most successful constant-factor optimization. On <code>small_32</code>, the bitset MAPF planner solved the instance in 15.5 seconds on one thread, compared with 156.3 seconds for greedy-batch and 38.4 seconds for parallel beam-8.
+        This changes the low-level planner from irregular graph search into a more regular wavefront computation. In parallel systems terms, this improves spatial locality, reduces allocation traffic, and turns low-level search into dense row-wise bit-mask updates. On wider grids, additional chunk-level parallelism would also be possible. This was the most successful constant-factor optimization. On <code>small_32</code>, the bitset MAPF planner solved the instance in 15.5 seconds on one thread, compared with 156.3 seconds for greedy-batch and 38.4 seconds for parallel beam-8.
       </p>
 
       <h3>Abandoned suffix A* optimization</h3>
@@ -452,7 +452,7 @@ Robots: 32</code></pre>
         </tbody>
       </table>
       <p>
-        The likely reason is granularity. A 10-by-30 grid is too small for row-level or chunk-level bitset parallelism to amortize OpenMP overhead. Since each row fits in one 64-bit word, the low-level computation is already compact and efficient on one core. Adding threads introduces scheduling and synchronization costs without providing enough additional useful work.
+        The likely reason is granularity. A 10-by-30 grid is too small for the implemented row-level OpenMP parallelism to amortize overhead. Since each row fits in one 64-bit word, there is no additional chunk-level work to distribute within a row on this benchmark. The low-level computation is already compact and efficient on one core, so adding threads mostly introduces scheduling and synchronization costs without enough useful extra work.
       </p>
     </section>
 
@@ -474,7 +474,7 @@ Robots: 32</code></pre>
         The bitset planner attacked a different bottleneck: the cost of low-level A* search. A* uses priority queues, hash tables, dynamic allocation, and irregular memory access. Bitset wavefront planning improved this by replacing irregular search with dense bit operations. This gave a large constant-factor improvement, making the 1-thread bitset solver the fastest measured configuration.
       </p>
       <p>
-        But the bitset planner still lived inside the high-level MAPF repair loop. It did not remove the need for thousands of repair iterations and tens of thousands of low-level searches. On <code>small_32</code>, the grid was too small for the bitset kernel itself to expose much thread-level parallelism. Therefore, the bitset implementation improved per-search efficiency but did not create scalable multicore execution.
+        But the bitset planner still lived inside the high-level MAPF repair loop. It did not remove the need for thousands of repair iterations and tens of thousands of low-level searches. On <code>small_32</code>, the grid was too small for the implemented row-wise bitset kernel to expose much useful thread-level parallelism. Therefore, the bitset implementation improved per-search efficiency but did not create scalable multicore execution on this workload.
       </p>
       <h3>What limited speedup overall</h3>
       <ul>
@@ -492,7 +492,7 @@ Robots: 32</code></pre>
         We implemented and evaluated three increasingly optimized MAPF solvers. The greedy-batch solver showed that repair-candidate parallelism can provide useful speedup, reaching about 4.7x speedup on <code>small_32</code> at 16 threads. The parallel speculative beam-8 solver showed that better repair choices can significantly reduce total search work and improve solution quality, but profiling revealed that it did not expose enough useful parallel work to keep many OpenMP threads busy. The bitset wavefront planner showed that low-level representation changes can produce large constant-factor gains by replacing irregular A* search with dense bit operations, producing the best single-thread runtime.
       </p>
       <p>
-        The final result is not perfect multicore scaling. Instead, the project demonstrates a more realistic parallel systems lesson: algorithmic structure determines available parallelism. MAPF collision repair has dependencies that limit coarse-grained parallelism, and small-grid low-level planning does not provide enough fine-grained work to compensate. Our best result was therefore a combination of algorithmic improvement and representation improvement, rather than simply using more threads.
+        The final result is not perfect multicore scaling. Instead, the project demonstrates a more realistic parallel systems lesson: algorithmic structure determines available parallelism. MAPF collision repair has dependencies that limit coarse-grained parallelism, and small-grid low-level planning does not provide enough fine-grained work to compensate. Different versions produced the strongest results on different axes: greedy-batch gave the best multicore speedup, beam-8 gave the best solution quality, and bitset wavefront gave the best single-thread runtime. The overall lesson is therefore about choosing the right algorithmic structure and representation for each bottleneck, rather than simply using more threads.
       </p>
     </section>
 
@@ -509,8 +509,8 @@ Robots: 32</code></pre>
 
     <section id="work-distribution">
       <h2>Work Distribution</h2>
-      <p class="note">
-        The public webpage omits detailed private credit allocation. The Gradescope PDF version should include the final work distribution and credit split if required by the course staff.
+      <p>
+        50%-50%. Jongsun worked on the initial CBS-style direction and the bitset wavefront low-level planner. Dylan worked on greedy repair with batched disjoint conflict repair and the parallel speculative repair solver.
       </p>
     </section>
   </main>
