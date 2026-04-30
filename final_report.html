@@ -279,16 +279,31 @@
         The greedy-batch solver improved runtime, but it still made many stagnant repairs and required thousands of repair iterations. On <code>small_32</code>, the greedy-batch solver needed 4,914 repair iterations, considered 29,364 conflicts, generated 58,728 candidate repairs, and made 58,760 A* calls.
       </p>
       <p>
-        The next approach was a parallel speculative planner. Instead of only committing the locally best repair from a small set of disjoint conflicts, this solver considered a larger conflict pool and kept a beam of promising candidates. The main benchmark used a conflict pool of 128 and beam width 8.
+        The next approach was a parallel speculative planner. It still used the same basic MAPF repair ingredients as Stage 1: detect collisions, generate one-robot vertex or edge constraints, replan the constrained robot, and score the resulting global solution by remaining collision count and total path cost. However, it changed the high-level search policy. In Stage 1, one candidate meant one constrained replan for one robot, and the solver only kept the best local candidate per conflict before greedy merge. In Stage 2, one candidate became a speculative repair state that could contain multiple newly added constraints and multiple repaired robots. The main benchmark used a conflict pool of 128, beam width 8, and lookahead depth 1.
       </p>
-      <ul>
-        <li>Use a larger conflict pool.</li>
-        <li>Evaluate speculative repair candidates in parallel.</li>
-        <li>Keep multiple promising candidates rather than only one greedy choice.</li>
-        <li>Merge candidate repairs while avoiding duplicate constraints and avoiding candidates that modify already-changed robots.</li>
-      </ul>
+      <table>
+        <thead>
+          <tr><th>Stage 1 greedy-batch</th><th>Stage 2 speculative beam merge</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Small disjoint conflict batch.</td><td>Larger disjoint conflict pool, typically 128 in the main run.</td></tr>
+          <tr><td>Each candidate repairs one robot under one new constraint.</td><td>Each candidate is a speculative state that may accumulate multiple new constraints and repaired robots.</td></tr>
+          <tr><td>Keep the best candidate per conflict and greedily merge.</td><td>Keep the best candidate per conflict, rank them globally, truncate to a beam, then merge only compatible candidates.</td></tr>
+          <tr><td>No lookahead beyond the immediate repair.</td><td>Supports one-step or two-step speculative lookahead, though the main benchmark used depth 1.</td></tr>
+        </tbody>
+      </table>
+      <ol>
+        <li>Detect all collisions and sort them by earliest timestep.</li>
+        <li>Select up to <code>conflict_pool_size</code> robot-disjoint conflicts from that sorted list. Stage 2 did not remove the disjointness restriction; it simply used a much larger bound than Stage 1.</li>
+        <li>For each selected conflict, generate the two standard one-sided repair constraints, one for each robot involved in the conflict.</li>
+        <li>Evaluate those speculative repair tasks in parallel. Each worker adds one constraint, replans the constrained robot with A*, applies the repaired path to a copy of the current solution, and scores the resulting state by remaining collision count and total path cost.</li>
+        <li>If lookahead depth is 2, expand each surviving first-step candidate by one more repair step. This creates a second speculative layer, and a better two-step descendant can replace its parent candidate. The reported beam-8 benchmark used lookahead depth 1, so the main measured result is a one-step speculative beam search.</li>
+        <li>Keep the best speculative candidate for each originating conflict, sort those candidates globally by score, and keep only the top <code>beam_width</code> candidates for merge.</li>
+        <li>Greedily merge candidates back into the current solution, but only if they are compatible. A candidate is rejected if it introduces a duplicate constraint or if it changes a robot that was already modified by an earlier accepted beam candidate in the same round.</li>
+        <li>After tentatively applying a candidate, recompute global collisions and total cost. Commit the candidate only if the merged solution improves. If no beam candidate can be merged, fall back to the single best candidate overall.</li>
+      </ol>
       <p>
-        The goal was to improve the search trajectory. If the solver makes better repair choices, it may need fewer high-level iterations, fewer low-level searches, and fewer total state expansions. This worked algorithmically: the speculative planner reduced repair iterations from 4,914 to 1,628 and low-level searches from 58,760 to 21,124 on <code>small_32</code>. It also improved solution quality, lowering total cost from 1109 to 1019 and makespan from 39 to 36.
+        The goal was to improve the search trajectory, not just to evaluate the same local repairs faster. By ranking and merging a beam of speculative candidates, Stage 2 tried to spend more computation per repair round in order to make better high-level choices. This worked algorithmically: the speculative planner reduced repair iterations from 4,914 to 1,628 and low-level searches from 58,760 to 21,124 on <code>small_32</code>. It also improved solution quality, lowering total cost from 1109 to 1019 and makespan from 39 to 36.
       </p>
 
       <h3>Stage 3: Bitset wavefront low-level planning</h3>
