@@ -1,3 +1,12 @@
+/*
+ * AStarPlanner is the project’s sequential low-level planner used to route one
+ * robot in space-time under CBS-style vertex/edge constraints. It searches over
+ * (position, timestep, direction) states with a Manhattan heuristic, tracks
+ * best known costs with turn-aware tie-breaking, and reconstructs a concrete
+ * path from parent links once the goal is reached at a constraint-safe time.
+ * This file provides the reusable single-agent planning primitive consumed by
+ * higher-level MAPF solvers (CBS and greedy repair variants).
+ */
 #include "a_star.h"
 
 #include <algorithm>

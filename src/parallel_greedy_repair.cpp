@@ -1,3 +1,12 @@
+/*
+ * ParallelGreedyRepairPlanner is the project’s high-throughput MAPF variant of
+ * greedy repair. It generates speculative repair candidates for a pool of
+ * disjoint conflicts, evaluates them concurrently, optionally performs one-step
+ * lookahead, and merges compatible improvements with beam-style selection. The
+ * goal is to reduce wall-clock time and improve repair quality by exploiting
+ * candidate-level parallelism while preserving the same collision-reduction
+ * objective (primary: fewer collisions, secondary: lower total path cost).
+ */
 #include "parallel_greedy_repair.h"
 
 #include <algorithm>

@@ -24,6 +24,7 @@ enum class Strategy {
   Greedy,
 };
 
+// Parses a strictly positive integer CLI argument and emits a labeled error.
 int parsePositiveInt(const char* value, const std::string& name) {
   try {
     size_t parsed_chars = 0;
@@ -37,6 +38,7 @@ int parsePositiveInt(const char* value, const std::string& name) {
   }
 }
 
+// Maps strategy text from CLI flags to the internal strategy enum.
 Strategy parseStrategy(const std::string& value) {
   if (value == "straight") {
     return Strategy::Straight;
@@ -47,6 +49,7 @@ Strategy parseStrategy(const std::string& value) {
   throw std::invalid_argument("strategy must be 'straight' or 'greedy'");
 }
 
+// Returns a stable printable label for the selected planning strategy.
 std::string strategyName(Strategy strategy) {
   if (strategy == Strategy::Straight) {
     return "straight";
@@ -54,6 +57,7 @@ std::string strategyName(Strategy strategy) {
   return "greedy";
 }
 
+// Returns the robot whose path finishes latest (the makespan-defining robot).
 const Robot* finalRobot(const std::vector<Robot>& robots) {
   const Robot* final_robot = nullptr;
   int last_finish_time = -1;
@@ -71,10 +75,12 @@ const Robot* finalRobot(const std::vector<Robot>& robots) {
   return final_robot;
 }
 
+// Computes Manhattan distance used by reporting helpers below.
 int manhattanDistance(const Point& lhs, const Point& rhs) {
   return std::abs(lhs.row - rhs.row) + std::abs(lhs.col - rhs.col);
 }
 
+// Returns makespan: the largest path finish timestep among all robots.
 int totalTime(const std::vector<Robot>& robots) {
   int last_finish_time = 0;
   for (const Robot& robot : robots) {
@@ -87,6 +93,7 @@ int totalTime(const std::vector<Robot>& robots) {
   return last_finish_time;
 }
 
+// Counts wait steps taken by the makespan-defining robot.
 int finalRobotWaitTime(const std::vector<Robot>& robots) {
   const Robot* final_robot = finalRobot(robots);
   if (final_robot == nullptr) {
@@ -102,6 +109,7 @@ int finalRobotWaitTime(const std::vector<Robot>& robots) {
   return wait_time;
 }
 
+// Counts non-wait moves by the final robot that do not reduce goal distance.
 int finalRobotDetourCount(const std::vector<Robot>& robots) {
   const Robot* final_robot = finalRobot(robots);
   if (final_robot == nullptr) {
@@ -124,6 +132,7 @@ int finalRobotDetourCount(const std::vector<Robot>& robots) {
   return detour_count;
 }
 
+// Prints supported command-line options for this demo binary.
 void printUsage(const char* program_name) {
   std::cerr << "Usage: " << program_name
             << " [rows] [cols] [output.svg] [--print] [--strategy straight|greedy] [-N threads]\n";
@@ -133,6 +142,7 @@ void printUsage(const char* program_name) {
 
 }  // namespace
 
+// parse args, run selected planner, print metrics, and emit SVG.
 int main(int argc, char** argv) {
   int rows = 5;
   int cols = 10;

@@ -4,8 +4,8 @@
 #include "grid_planner.h"
 
 enum class ConstraintType {
-  Vertex,
-  Edge,
+  Vertex, // Two vertices landing on the same grid at the smae time
+  Edge, // When two robots switch positions in both vertices at one time. 
 };
 
 struct Constraint {

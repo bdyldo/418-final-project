@@ -1,3 +1,12 @@
+/*
+ * GreedyRepairPlanner is the project’s baseline MAPF solver that starts from
+ * individually planned paths, detects collisions, and iteratively repairs them
+ * by adding constraints and replanning only affected robots. It evaluates many
+ * candidate repairs (optionally in parallel with OpenMP), scores them by fewer
+ * collisions then lower total path cost, and commits improving updates in batch
+ * when possible. This file implements the main sequential greedy-repair search
+ * strategy used for correctness and performance comparisons.
+ */
 #include "greedy_repair.h"
 
 #include <algorithm>

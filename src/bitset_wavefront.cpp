@@ -1,3 +1,14 @@
+/*
+ * BitsetWavefrontPlanner is a low-level space-time planner for one robot under
+ * CBS-style constraints. It packs each time layer of the grid into 64-bit row
+ * chunks and performs a bit-parallel wavefront expansion over wait/right/left/
+ * down/up moves. Vertex and edge constraints are pre-indexed into directional
+ * bit masks so each expansion step can apply legality checks with fast bitwise
+ * operations. The planner stores one parent-move label per reached cell-time
+ * state, then reconstructs a concrete path once the goal is reachable at or
+ * beyond the latest relevant constraint time. OpenMP row parallelism is used
+ * for mask generation when it is beneficial.
+ */
 #include "bitset_wavefront.h"
 
 #include <algorithm>
@@ -13,6 +24,7 @@
 
 namespace {
 
+// A numerical rep of sets of all possible moves from iteraation i - 1
 enum ParentMove : std::int8_t {
   ParentUnset = -1,
   ParentStart = 0,
@@ -43,6 +55,8 @@ int workerCountForRows(int rows) {
 #endif
 }
 
+// Returns a per-chunk validity mask so bits beyond the grid width are zeroed
+// in the last 64-bit chunk, while full chunks remain all-ones.
 std::uint64_t validMaskForChunk(int chunk_index, int chunk_count, int cols) {
   if (chunk_index + 1 != chunk_count) {
     return ~std::uint64_t{0};
@@ -80,6 +94,8 @@ void shiftRowRight(const std::uint64_t* source,
   }
 }
 
+// Builds an expansion order biased toward the goal direction (horizontal vs
+// vertical first), with opposite-direction moves next and wait last.
 std::vector<MoveDescriptor> movePriority(const Robot& robot,
                                          const std::vector<std::uint64_t>& wait_masks,
                                          const std::vector<std::uint64_t>& right_masks,
@@ -148,6 +164,9 @@ BitsetWavefrontPlanner::BitsetWavefrontPlanner(int rows, int cols)
   }
 }
 
+// Runs bit-parallel space-time search for a single robot: build constraint
+// masks, expand reachable cells layer-by-layer, and reconstruct a path from
+// recorded parent moves once the goal is reached at a valid timestep.
 std::optional<std::vector<Point>> BitsetWavefrontPlanner::findPath(
     const Robot& robot,
     const std::vector<Constraint>& constraints,
@@ -362,6 +381,8 @@ int BitsetWavefrontPlanner::manhattanDistance(const Point& lhs,
   return std::abs(lhs.row - rhs.row) + std::abs(lhs.col - rhs.col);
 }
 
+// Converts one robot's vertex/edge constraints into dense time-layered bit
+// masks (vertex forbidden + directional blocked moves) used during expansion.
 BitsetWavefrontPlanner::ConstraintIndex BitsetWavefrontPlanner::buildConstraintIndex(
     int robot_id,
     const std::vector<Constraint>& constraints,
